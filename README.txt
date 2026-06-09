@@ -111,4 +111,5 @@ is niet beschikbaar op Homey Bridge / Homey Cloud.
 Source code, issues, contributions:
   https://github.com/fbnlrz/homeyidotmatrix
 
-License: MIT
+License: Unlicense (public domain — do whatever you want, no
+restrictions, no attribution required).

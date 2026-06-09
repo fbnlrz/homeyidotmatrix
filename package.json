@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Homey integration for iDotMatrix BLE pixel displays",
   "main": "app.js",
-  "license": "MIT",
+  "license": "Unlicense",
   "engines": {
     "node": ">=18.0.0"
   },

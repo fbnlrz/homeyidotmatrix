@@ -111,7 +111,7 @@ This app was developed using [Claude Code](https://claude.com/claude-code) and t
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[Unlicense](LICENSE) — public domain. Do whatever you want with this code: copy, modify, sell, fork, no attribution required.
 
 ## Status
 
