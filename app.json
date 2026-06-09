@@ -1,0 +1,292 @@
+{
+  "id": "com.idotmatrix",
+  "version": "0.1.0",
+  "compatibility": ">=5.0.0",
+  "sdk": 3,
+  "platforms": ["local"],
+  "name": {
+    "en": "iDotMatrix",
+    "de": "iDotMatrix"
+  },
+  "description": {
+    "en": "Control iDotMatrix BLE pixel displays from Homey.",
+    "de": "Steuere iDotMatrix BLE-Pixel-Displays aus Homey."
+  },
+  "category": ["lights"],
+  "permissions": ["homey:wireless:ble"],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png"
+  },
+  "author": {
+    "name": "Homey iDotMatrix",
+    "email": "noreply@example.com"
+  },
+  "brandColor": "#FF3366",
+  "drivers": [
+    {
+      "id": "idotmatrix",
+      "name": {
+        "en": "iDotMatrix Display",
+        "de": "iDotMatrix Display"
+      },
+      "class": "light",
+      "capabilities": ["onoff", "dim"],
+      "platforms": ["local"],
+      "connectivity": ["ble"],
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "images": {
+        "small": "/drivers/idotmatrix/assets/images/small.png",
+        "large": "/drivers/idotmatrix/assets/images/large.png"
+      },
+      "settings": [
+        {
+          "type": "group",
+          "label": { "en": "Display", "de": "Anzeige" },
+          "children": [
+            {
+              "id": "pixel_size",
+              "type": "dropdown",
+              "label": { "en": "Pixel size", "de": "Pixel-Größe" },
+              "value": "32",
+              "values": [
+                { "id": "16", "label": { "en": "16x16" } },
+                { "id": "32", "label": { "en": "32x32" } },
+                { "id": "64", "label": { "en": "64x64" } }
+              ]
+            },
+            {
+              "id": "flip",
+              "type": "checkbox",
+              "label": { "en": "Rotate 180°", "de": "180° gedreht" },
+              "value": false
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": { "en": "Diagnostics", "de": "Diagnose" },
+          "children": [
+            {
+              "id": "probe_result",
+              "type": "textarea",
+              "label": { "en": "Last probe result", "de": "Letztes Probe-Ergebnis" },
+              "value": "",
+              "hint": {
+                "en": "Read-only JSON of the most recent capability probe.",
+                "de": "Nur-Lese-JSON des letzten Capability-Probe-Laufs."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "flow": {
+    "actions": [
+      {
+        "id": "show_text",
+        "title": { "en": "Show text", "de": "Text anzeigen" },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=idotmatrix"
+          },
+          {
+            "name": "text",
+            "type": "text",
+            "title": { "en": "Text", "de": "Text" }
+          },
+          {
+            "name": "color",
+            "type": "color",
+            "title": { "en": "Color", "de": "Farbe" }
+          },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": { "en": "Mode", "de": "Modus" },
+            "values": [
+              { "id": "0", "label": { "en": "Replace" } },
+              { "id": "1", "label": { "en": "Marquee" } },
+              { "id": "2", "label": { "en": "Reverse marquee" } },
+              { "id": "3", "label": { "en": "Rise" } },
+              { "id": "4", "label": { "en": "Lower" } },
+              { "id": "5", "label": { "en": "Blink" } },
+              { "id": "6", "label": { "en": "Fade" } },
+              { "id": "7", "label": { "en": "Tetris" } },
+              { "id": "8", "label": { "en": "Fill" } }
+            ]
+          },
+          {
+            "name": "speed",
+            "type": "range",
+            "title": { "en": "Speed", "de": "Geschwindigkeit" },
+            "min": 1,
+            "max": 100,
+            "step": 1,
+            "value": 95
+          }
+        ]
+      },
+      {
+        "id": "show_image_url",
+        "title": { "en": "Show image from URL", "de": "Bild von URL anzeigen" },
+        "hint": {
+          "en": "Fetches a PNG/GIF from the given URL and shows it on the display.",
+          "de": "Lädt ein PNG/GIF von der URL und zeigt es auf dem Display."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "url",
+            "type": "text",
+            "title": { "en": "Image URL", "de": "Bild-URL" },
+            "placeholder": { "en": "https://…/image.png" }
+          },
+          {
+            "name": "kind",
+            "type": "dropdown",
+            "title": { "en": "Type", "de": "Typ" },
+            "values": [
+              { "id": "png", "label": { "en": "PNG (static)" } },
+              { "id": "gif", "label": { "en": "GIF (animated)" } }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "show_clock",
+        "title": { "en": "Show clock", "de": "Uhr anzeigen" },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "style",
+            "type": "dropdown",
+            "title": { "en": "Style", "de": "Stil" },
+            "values": [
+              { "id": "0", "label": { "en": "Style 0" } },
+              { "id": "1", "label": { "en": "Style 1" } },
+              { "id": "2", "label": { "en": "Style 2" } },
+              { "id": "3", "label": { "en": "Style 3" } },
+              { "id": "4", "label": { "en": "Style 4" } },
+              { "id": "5", "label": { "en": "Style 5" } },
+              { "id": "6", "label": { "en": "Style 6" } },
+              { "id": "7", "label": { "en": "Style 7" } }
+            ]
+          },
+          {
+            "name": "color",
+            "type": "color",
+            "title": { "en": "Color", "de": "Farbe" }
+          },
+          {
+            "name": "show_date",
+            "type": "checkbox",
+            "title": { "en": "Show date", "de": "Datum anzeigen" }
+          },
+          {
+            "name": "hour24",
+            "type": "checkbox",
+            "title": { "en": "24h format", "de": "24h-Format" }
+          }
+        ]
+      },
+      {
+        "id": "start_countdown",
+        "title": { "en": "Countdown", "de": "Countdown" },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "action",
+            "type": "dropdown",
+            "title": { "en": "Action", "de": "Aktion" },
+            "values": [
+              { "id": "0", "label": { "en": "Disable" } },
+              { "id": "1", "label": { "en": "Start" } },
+              { "id": "2", "label": { "en": "Pause" } },
+              { "id": "3", "label": { "en": "Restart" } }
+            ]
+          },
+          {
+            "name": "minutes",
+            "type": "number",
+            "title": { "en": "Minutes", "de": "Minuten" },
+            "min": 0,
+            "max": 99,
+            "step": 1
+          },
+          {
+            "name": "seconds",
+            "type": "number",
+            "title": { "en": "Seconds", "de": "Sekunden" },
+            "min": 0,
+            "max": 59,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "set_scoreboard",
+        "title": { "en": "Set scoreboard", "de": "Scoreboard setzen" },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "score_a",
+            "type": "number",
+            "title": { "en": "Score A", "de": "Punktestand A" },
+            "min": 0,
+            "max": 999,
+            "step": 1
+          },
+          {
+            "name": "score_b",
+            "type": "number",
+            "title": { "en": "Score B", "de": "Punktestand B" },
+            "min": 0,
+            "max": 999,
+            "step": 1
+          }
+        ]
+      },
+      {
+        "id": "chronograph",
+        "title": { "en": "Chronograph", "de": "Stoppuhr" },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "action",
+            "type": "dropdown",
+            "title": { "en": "Action", "de": "Aktion" },
+            "values": [
+              { "id": "0", "label": { "en": "Reset" } },
+              { "id": "1", "label": { "en": "Start" } },
+              { "id": "2", "label": { "en": "Pause" } },
+              { "id": "3", "label": { "en": "Continue" } }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "probe_capabilities",
+        "title": { "en": "Probe device capabilities", "de": "Gerät-Capabilities abfragen" },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      }
+    ]
+  }
+}

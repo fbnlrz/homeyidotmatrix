@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="32" fill="#1a1a1a"/>
+  <g fill="#ff3366">
+    <rect x="40" y="40" width="20" height="20"/>
+    <rect x="80" y="40" width="20" height="20"/>
+    <rect x="120" y="40" width="20" height="20"/>
+    <rect x="160" y="40" width="20" height="20"/>
+    <rect x="200" y="40" width="20" height="20"/>
+    <rect x="40" y="80" width="20" height="20"/>
+    <rect x="200" y="80" width="20" height="20"/>
+    <rect x="40" y="120" width="20" height="20"/>
+    <rect x="120" y="120" width="20" height="20"/>
+    <rect x="200" y="120" width="20" height="20"/>
+    <rect x="40" y="160" width="20" height="20"/>
+    <rect x="200" y="160" width="20" height="20"/>
+    <rect x="40" y="200" width="20" height="20"/>
+    <rect x="80" y="200" width="20" height="20"/>
+    <rect x="120" y="200" width="20" height="20"/>
+    <rect x="160" y="200" width="20" height="20"/>
+    <rect x="200" y="200" width="20" height="20"/>
+  </g>
+</svg>
