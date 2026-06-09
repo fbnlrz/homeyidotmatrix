@@ -1,5 +1,11 @@
 {
   "error": {
-    "disconnected": "Display not reachable. Trying to reconnect…"
+    "disconnected": "Display not reachable. Trying to reconnect…",
+    "service_not_found": "iDotMatrix BLE service not found. Make sure the display is powered on and in range.",
+    "write_failed": "Failed to send command to display."
+  },
+  "pair": {
+    "scanning": "Scanning for iDotMatrix displays…",
+    "no_devices": "No iDotMatrix displays found. Power-cycle the display and try again."
   }
 }
