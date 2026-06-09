@@ -146,8 +146,8 @@
         "id": "show_image_url",
         "title": { "en": "Show image from URL", "de": "Bild von URL anzeigen" },
         "hint": {
-          "en": "Fetches a PNG/GIF from the given URL and shows it on the display.",
-          "de": "Lädt ein PNG/GIF von der URL und zeigt es auf dem Display."
+          "en": "Fetches a PNG, JPG/JPEG, BMP, or GIF from the given URL and shows it on the display. GIFs are auto-detected and sent animated; other formats are decoded and resized to the display size.",
+          "de": "Lädt ein PNG, JPG/JPEG, BMP oder GIF von der URL und zeigt es auf dem Display. GIFs werden automatisch erkannt und animiert übertragen; andere Formate werden dekodiert und auf die Display-Größe skaliert."
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
@@ -155,15 +155,16 @@
             "name": "url",
             "type": "text",
             "title": { "en": "Image URL", "de": "Bild-URL" },
-            "placeholder": { "en": "https://…/image.png" }
+            "placeholder": { "en": "https://…/image.png", "de": "https://…/bild.jpg" }
           },
           {
             "name": "kind",
             "type": "dropdown",
-            "title": { "en": "Type", "de": "Typ" },
+            "title": { "en": "Mode", "de": "Modus" },
             "values": [
-              { "id": "png", "label": { "en": "PNG (static)" } },
-              { "id": "gif", "label": { "en": "GIF (animated)" } }
+              { "id": "auto", "label": { "en": "Auto-detect", "de": "Auto" } },
+              { "id": "png", "label": { "en": "Force static (PNG/JPG)", "de": "Erzwinge statisch (PNG/JPG)" } },
+              { "id": "gif", "label": { "en": "Force animated (GIF)", "de": "Erzwinge animiert (GIF)" } }
             ]
           }
         ]

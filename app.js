@@ -1,12 +1,35 @@
 'use strict';
 
 const Homey = require('homey');
+const { Jimp } = require('jimp');
 
 async function _fetchUrlBuffer(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
   const ab = await res.arrayBuffer();
   return Buffer.from(ab);
+}
+
+/**
+ * Detect "this looks like a GIF" from the magic bytes. Used to route
+ * GIF89a/GIF87a via the animated GIF path; everything else (JPG/PNG/WEBP/BMP)
+ * gets decoded by Jimp and re-encoded as PNG.
+ */
+function _isGif(buf) {
+  return buf.length >= 6
+    && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46
+    && buf[3] === 0x38 && (buf[4] === 0x37 || buf[4] === 0x39) && buf[5] === 0x61;
+}
+
+/**
+ * Decode any image format Jimp understands (JPG, PNG, BMP, TIFF, GIF first frame),
+ * resize to `size`x`size`, and return a PNG-encoded Buffer ready for the iDotMatrix
+ * image opcode.
+ */
+async function _toPngForDisplay(buf, size) {
+  const img = await Jimp.read(buf);
+  img.resize({ w: size, h: size });
+  return img.getBuffer('image/png');
 }
 
 class IDMApp extends Homey.App {
@@ -32,11 +55,15 @@ class IDMApp extends Homey.App {
 
     reg('show_image_url', async args => {
       const buf = await _fetchUrlBuffer(args.url);
-      if (args.kind === 'gif') {
+      // Honor explicit "gif" choice OR auto-detect animated GIF by magic bytes.
+      if (args.kind === 'gif' || _isGif(buf)) {
         await args.device.showGif(buf);
-      } else {
-        await args.device.showImage(buf);
+        return;
       }
+      // Anything else (PNG, JPG/JPEG, BMP, …) → decode + resize + re-encode as PNG.
+      const size = args.device._pixelSize();
+      const pngBuf = await _toPngForDisplay(buf, size);
+      await args.device.showImage(pngBuf);
     });
 
     reg('show_clock', async args => {

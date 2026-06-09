@@ -64,6 +64,11 @@ class IDMDevice extends Homey.Device {
     await this.client.write(buf, { withResponse: true });
   }
 
+  _pixelSize() {
+    const v = parseInt(this.getSetting('pixel_size'), 10);
+    return Number.isFinite(v) && v > 0 ? v : 32;
+  }
+
   async showImage(pngBuffer) {
     const payload = IDMProtocol.buildImagePayload(pngBuffer);
     await this.client.write(payload, { withResponse: true });
