@@ -14,6 +14,11 @@
   },
   "category": ["lights"],
   "permissions": ["homey:wireless:ble"],
+  "api": {
+    "listMedia":   { "method": "GET",    "path": "/media" },
+    "uploadMedia": { "method": "POST",   "path": "/media/:name" },
+    "deleteMedia": { "method": "DELETE", "path": "/media/:name" }
+  },
   "images": {
     "small": "/assets/images/small.png",
     "large": "/assets/images/large.png"
@@ -139,6 +144,23 @@
             "max": 100,
             "step": 1,
             "value": 95
+          }
+        ]
+      },
+      {
+        "id": "show_stored_image",
+        "title": { "en": "Show stored image", "de": "Gespeichertes Bild anzeigen" },
+        "hint": {
+          "en": "Pick from images you uploaded to this app's media store. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename> with the file as the request body.",
+          "de": "Wähle aus Bildern, die du in den Media-Store dieser App hochgeladen hast. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<dateiname> mit der Datei im Request-Body."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "file",
+            "type": "autocomplete",
+            "title": { "en": "File", "de": "Datei" },
+            "placeholder": { "en": "Type to filter…", "de": "Tippen zum Filtern…" }
           }
         ]
       },

@@ -3,6 +3,7 @@
 const Homey = require('homey');
 const { Jimp } = require('jimp');
 const { resizeAnimatedGif } = require('./lib/gifResize');
+const MediaStore = require('./lib/MediaStore');
 
 async function _fetchUrlBuffer(url) {
   const res = await fetch(url);
@@ -39,6 +40,10 @@ class IDMApp extends Homey.App {
 
   async onInit() {
     this.log('iDotMatrix app starting');
+    this.media = new MediaStore(this);
+    await this.media.init();
+    this.log(`media store ready at ${this.media.dir}`);
+    this.log('upload media via:  POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>');
     this._registerFlowActions();
   }
 
@@ -54,6 +59,23 @@ class IDMApp extends Homey.App {
         mode: parseInt(args.mode, 10),
         speed: parseInt(args.speed, 10),
       });
+    });
+
+    const showStored = this.homey.flow.getActionCard('show_stored_image');
+    showStored.registerRunListener(async args => {
+      this._runStoredImageJob(args).catch(err => {
+        args.device.error(`show_stored_image failed: ${err.message}`);
+      });
+    });
+    showStored.registerArgumentAutocompleteListener('file', async query => {
+      const items = await this.media.list();
+      const q = String(query || '').toLowerCase();
+      return items
+        .filter(it => !q || it.name.toLowerCase().includes(q))
+        .map(it => ({
+          name: it.name,
+          description: `${(it.size / 1024).toFixed(1)} KB`,
+        }));
     });
 
     reg('show_image_url', async args => {
@@ -136,6 +158,38 @@ class IDMApp extends Homey.App {
     const pngBuf = await _toPngForDisplay(buf, size);
     log(`decoded+resized to ${size}x${size} PNG (${pngBuf.length} bytes) in ${Date.now() - tDec}ms`);
 
+    const tBle = Date.now();
+    await args.device.showImage(pngBuf);
+    log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
+  }
+
+  async _runStoredImageJob(args) {
+    const log = (...m) => args.device.log('[stored]', ...m);
+    const file = args.file && args.file.name;
+    if (!file) throw new Error('no file selected');
+    const t0 = Date.now();
+    const buf = await this.media.read(file);
+    log(`read ${file} (${buf.length} bytes) in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
+
+    if (_isGif(buf)) {
+      const size = args.device._pixelSize();
+      const srcW = buf.readUInt16LE(6);
+      const srcH = buf.readUInt16LE(8);
+      let toSend = buf;
+      if (srcW !== size || srcH !== size) {
+        const tR = Date.now();
+        toSend = resizeAnimatedGif(buf, size);
+        log(`resized GIF ${srcW}x${srcH} → ${size}x${size}: ${buf.length}B → ${toSend.length}B in ${Date.now() - tR}ms`);
+      }
+      const tBle = Date.now();
+      await args.device.showGif(toSend);
+      log(`GIF BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
+      return;
+    }
+    const size = args.device._pixelSize();
+    const tDec = Date.now();
+    const pngBuf = await _toPngForDisplay(buf, size);
+    log(`decoded+resized to ${size}x${size} PNG (${pngBuf.length} bytes) in ${Date.now() - tDec}ms`);
     const tBle = Date.now();
     await args.device.showImage(pngBuf);
     log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
