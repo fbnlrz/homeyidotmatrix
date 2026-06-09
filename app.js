@@ -2,6 +2,7 @@
 
 const Homey = require('homey');
 const { Jimp } = require('jimp');
+const { resizeAnimatedGif } = require('./lib/gifResize');
 
 async function _fetchUrlBuffer(url) {
   const res = await fetch(url);
@@ -113,9 +114,20 @@ class IDMApp extends Homey.App {
     const treatAsGif = kind === 'gif' || (kind === 'auto' && _isGif(buf));
 
     if (treatAsGif) {
-      log('sending as GIF');
-      await args.device.showGif(buf);
-      log(`GIF done in ${Date.now() - t0}ms total`);
+      const size = args.device._pixelSize();
+      const srcW = buf.readUInt16LE(6);
+      const srcH = buf.readUInt16LE(8);
+      let toSend = buf;
+      if (srcW !== size || srcH !== size) {
+        const tR = Date.now();
+        toSend = resizeAnimatedGif(buf, size);
+        log(`resized GIF ${srcW}x${srcH} → ${size}x${size}: ${buf.length}B → ${toSend.length}B in ${Date.now() - tR}ms`);
+      } else {
+        log(`GIF already ${size}x${size}, sending as-is`);
+      }
+      const tBle = Date.now();
+      await args.device.showGif(toSend);
+      log(`GIF BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
       return;
     }
 
