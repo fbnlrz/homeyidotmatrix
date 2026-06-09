@@ -4,6 +4,7 @@ const Homey = require('homey');
 const { Jimp } = require('jimp');
 const { resizeAnimatedGif } = require('./lib/gifResize');
 const MediaStore = require('./lib/MediaStore');
+const RemoteMediaIndex = require('./lib/RemoteMediaIndex');
 
 async function _fetchUrlBuffer(url) {
   const res = await fetch(url);
@@ -42,8 +43,10 @@ class IDMApp extends Homey.App {
     this.log('iDotMatrix app starting');
     this.media = new MediaStore(this);
     await this.media.init();
-    this.log(`media store ready at ${this.media.dir}`);
-    this.log('upload media via:  POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>');
+    if (this.media.dir) {
+      this.log(`media store ready at ${this.media.dir}`);
+      this.log('upload media via:  POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>');
+    }
     this._registerFlowActions();
   }
 
@@ -59,6 +62,40 @@ class IDMApp extends Homey.App {
         mode: parseInt(args.mode, 10),
         speed: parseInt(args.speed, 10),
       });
+    });
+
+    const showRemote = this.homey.flow.getActionCard('show_remote_image');
+    showRemote.registerRunListener(async args => {
+      this._runRemoteImageJob(args).catch(err => {
+        args.device.error(`show_remote_image failed: ${err.message}`);
+      });
+    });
+    showRemote.registerArgumentAutocompleteListener('file', async (query, args) => {
+      const baseUrl = args.device.getSetting('media_base_url');
+      if (!baseUrl) {
+        return [{
+          name: '(no URL configured)',
+          description: 'Open this device → settings → Remote media server',
+          disabled: true,
+        }];
+      }
+      try {
+        const items = await RemoteMediaIndex.list(baseUrl);
+        const q = String(query || '').toLowerCase();
+        return items
+          .filter(it => !q || it.name.toLowerCase().includes(q))
+          .slice(0, 50)
+          .map(it => ({
+            name: it.name,
+            description: it.size ? `${(it.size / 1024).toFixed(1)} KB` : baseUrl,
+          }));
+      } catch (e) {
+        return [{
+          name: `(error: ${e.message})`,
+          description: baseUrl,
+          disabled: true,
+        }];
+      }
     });
 
     const showStored = this.homey.flow.getActionCard('show_stored_image');
@@ -163,6 +200,18 @@ class IDMApp extends Homey.App {
     log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
   }
 
+  async _runRemoteImageJob(args) {
+    const log = (...m) => args.device.log('[remote]', ...m);
+    const baseUrl = args.device.getSetting('media_base_url');
+    if (!baseUrl) throw new Error('media_base_url not set on device');
+    const name = args.file && args.file.name;
+    if (!name) throw new Error('no file selected');
+    const t0 = Date.now();
+    const { buffer: buf, url } = await RemoteMediaIndex.fetchFile(baseUrl, name);
+    log(`fetched ${url} (${buf.length} bytes) in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
+    await this._sendBufferToDevice(args.device, buf, log, t0);
+  }
+
   async _runStoredImageJob(args) {
     const log = (...m) => args.device.log('[stored]', ...m);
     const file = args.file && args.file.name;
@@ -170,9 +219,12 @@ class IDMApp extends Homey.App {
     const t0 = Date.now();
     const buf = await this.media.read(file);
     log(`read ${file} (${buf.length} bytes) in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
+    await this._sendBufferToDevice(args.device, buf, log, t0);
+  }
 
+  async _sendBufferToDevice(device, buf, log, t0) {
+    const size = device._pixelSize();
     if (_isGif(buf)) {
-      const size = args.device._pixelSize();
       const srcW = buf.readUInt16LE(6);
       const srcH = buf.readUInt16LE(8);
       let toSend = buf;
@@ -182,16 +234,15 @@ class IDMApp extends Homey.App {
         log(`resized GIF ${srcW}x${srcH} → ${size}x${size}: ${buf.length}B → ${toSend.length}B in ${Date.now() - tR}ms`);
       }
       const tBle = Date.now();
-      await args.device.showGif(toSend);
+      await device.showGif(toSend);
       log(`GIF BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
       return;
     }
-    const size = args.device._pixelSize();
     const tDec = Date.now();
     const pngBuf = await _toPngForDisplay(buf, size);
     log(`decoded+resized to ${size}x${size} PNG (${pngBuf.length} bytes) in ${Date.now() - tDec}ms`);
     const tBle = Date.now();
-    await args.device.showImage(pngBuf);
+    await device.showImage(pngBuf);
     log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
   }
 

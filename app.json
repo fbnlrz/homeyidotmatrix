@@ -82,6 +82,22 @@
         },
         {
           "type": "group",
+          "label": { "en": "Remote media server", "de": "Externer Media-Server" },
+          "children": [
+            {
+              "id": "media_base_url",
+              "type": "text",
+              "label": { "en": "Base URL", "de": "Basis-URL" },
+              "value": "",
+              "hint": {
+                "en": "URL of a directory listing on your LAN (e.g. http://192.168.178.42:8080/idotmatrix/). Works with nginx autoindex, Apache, Python http.server, or any server that returns an HTML listing or an index.json. Used by the Show image from remote server Flow card.",
+                "de": "URL eines Verzeichnis-Listings im LAN (z.B. http://192.168.178.42:8080/idotmatrix/). Funktioniert mit nginx autoindex, Apache, Python http.server oder jedem Server, der ein HTML-Listing oder eine index.json liefert. Wird von der Flow-Karte Bild vom externen Server anzeigen genutzt."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
           "label": { "en": "Diagnostics", "de": "Diagnose" },
           "children": [
             {
@@ -148,11 +164,28 @@
         ]
       },
       {
+        "id": "show_remote_image",
+        "title": { "en": "Show image from remote server", "de": "Bild vom externen Server anzeigen" },
+        "hint": {
+          "en": "Lists images from the URL configured under device settings → Remote media server. Works with any HTTP directory listing (nginx autoindex, Apache, python -m http.server) or an index.json.",
+          "de": "Listet Bilder von der unter Geräteeinstellungen → Externer Media-Server konfigurierten URL. Funktioniert mit jedem HTTP-Verzeichnis-Listing (nginx autoindex, Apache, python -m http.server) oder einer index.json."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "file",
+            "type": "autocomplete",
+            "title": { "en": "File", "de": "Datei" },
+            "placeholder": { "en": "Type to filter…", "de": "Tippen zum Filtern…" }
+          }
+        ]
+      },
+      {
         "id": "show_stored_image",
         "title": { "en": "Show stored image", "de": "Gespeichertes Bild anzeigen" },
         "hint": {
-          "en": "Pick from images you uploaded to this app's media store. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename> with the file as the request body.",
-          "de": "Wähle aus Bildern, die du in den Media-Store dieser App hochgeladen hast. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<dateiname> mit der Datei im Request-Body."
+          "en": "Pick from images uploaded to this app's local media store (if available on this Homey). Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>.",
+          "de": "Wähle aus Bildern im lokalen Media-Store dieser App (falls verfügbar). Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<dateiname>."
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
