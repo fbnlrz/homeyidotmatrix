@@ -1,0 +1,11 @@
+{
+  "error": {
+    "disconnected": "Display nicht erreichbar. Verbinde neu…",
+    "service_not_found": "iDotMatrix BLE-Service nicht gefunden. Stelle sicher, dass das Display an und in Reichweite ist.",
+    "write_failed": "Befehl konnte nicht ans Display gesendet werden."
+  },
+  "pair": {
+    "scanning": "Suche nach iDotMatrix-Displays…",
+    "no_devices": "Keine iDotMatrix-Displays gefunden. Schalte das Display aus und wieder ein und versuche es erneut."
+  }
+}
