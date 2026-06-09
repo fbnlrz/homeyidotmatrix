@@ -39,7 +39,8 @@
   "source": "https://github.com/fbnlrz/homeyidotmatrix",
   "homepage": "https://github.com/fbnlrz/homeyidotmatrix",
   "bugs": { "url": "https://github.com/fbnlrz/homeyidotmatrix/issues" },
-  "support": "https://github.com/fbnlrz/homeyidotmatrix/issues",
+  "support": "https://community.homey.app/t/idotmatrix-app-matrix-devices/155964",
+  "homeyCommunityTopicId": 155964,
   "api": {
     "listMedia":   { "method": "GET",    "path": "/media" },
     "uploadMedia": { "method": "POST",   "path": "/media/:name" },
