@@ -70,13 +70,23 @@ class IDMDevice extends Homey.Device {
   }
 
   async showImage(pngBuffer) {
+    // Enter DIY mode before sending pixel data — without this the device often
+    // ignores the upload (still shows clock/last content). 50ms pause gives
+    // the device time to switch modes before the upload bytes start arriving.
+    await this.client.write(IDMProtocol.buildDiyMode(1));
+    await new Promise(r => setTimeout(r, 50));
     const payload = IDMProtocol.buildImagePayload(pngBuffer);
-    await this.client.write(payload, { withResponse: true });
+    // writeWithoutResponse is dramatically faster (no per-chunk BLE ack wait)
+    // and matches the Python reference client's default. Per-command success
+    // ack still arrives on fa03 if we want to wait for it later.
+    await this.client.write(payload, { withResponse: false });
   }
 
   async showGif(gifBuffer) {
+    await this.client.write(IDMProtocol.buildDiyMode(1));
+    await new Promise(r => setTimeout(r, 50));
     const chunks = IDMProtocol.buildGifChunks(gifBuffer);
-    await this.client.write(chunks, { withResponse: true });
+    await this.client.write(chunks, { withResponse: false });
   }
 
   async showClock({ style = 0, showDate = true, hour24 = true, color = '#ffffff' } = {}) {

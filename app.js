@@ -29,7 +29,9 @@ function _isGif(buf) {
 async function _toPngForDisplay(buf, size) {
   const img = await Jimp.read(buf);
   img.resize({ w: size, h: size });
-  return img.getBuffer('image/png');
+  // colorType 2 (RGB, no alpha) + max deflate cuts a 32x32 photo from
+  // ~2900 B (default RGBA) to ~600 B — fewer BLE chunks, faster display update.
+  return img.getBuffer('image/png', { colorType: 2, deflateLevel: 9 });
 }
 
 class IDMApp extends Homey.App {
