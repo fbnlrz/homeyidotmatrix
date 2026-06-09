@@ -54,16 +54,14 @@ class IDMApp extends Homey.App {
     });
 
     reg('show_image_url', async args => {
-      const buf = await _fetchUrlBuffer(args.url);
-      // Honor explicit "gif" choice OR auto-detect animated GIF by magic bytes.
-      if (args.kind === 'gif' || _isGif(buf)) {
-        await args.device.showGif(buf);
-        return;
-      }
-      // Anything else (PNG, JPG/JPEG, BMP, …) → decode + resize + re-encode as PNG.
-      const size = args.device._pixelSize();
-      const pngBuf = await _toPngForDisplay(buf, size);
-      await args.device.showImage(pngBuf);
+      // Homey Flow actions have a 10s hard timeout. Fetching a multi-hundred-KB
+      // JPG, decoding+resizing with Jimp, then BLE-chunking can take much longer
+      // on Homey's CPU — so we kick the work off and return immediately. The
+      // IDMClient serializes writes internally, so two clicks won't interleave.
+      // Errors are logged to the device.
+      this._runImageJob(args).catch(err => {
+        args.device.error(`show_image_url failed: ${err.message}`);
+      });
     });
 
     reg('show_clock', async args => {
@@ -95,8 +93,42 @@ class IDMApp extends Homey.App {
     });
 
     reg('probe_capabilities', async args => {
-      await args.device.probeCapabilities();
+      // Same async pattern — full probe takes ~10s.
+      this._runProbeJob(args).catch(err => {
+        args.device.error(`probe_capabilities failed: ${err.message}`);
+      });
     });
+  }
+
+  async _runImageJob(args) {
+    const log = (...m) => args.device.log('[image]', ...m);
+    const t0 = Date.now();
+    log('fetching', args.url);
+    const buf = await _fetchUrlBuffer(args.url);
+    log(`fetched ${buf.length} bytes in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
+
+    const kind = args.kind || 'auto';
+    const treatAsGif = kind === 'gif' || (kind === 'auto' && _isGif(buf));
+
+    if (treatAsGif) {
+      log('sending as GIF');
+      await args.device.showGif(buf);
+      log(`GIF done in ${Date.now() - t0}ms total`);
+      return;
+    }
+
+    const size = args.device._pixelSize();
+    const tDec = Date.now();
+    const pngBuf = await _toPngForDisplay(buf, size);
+    log(`decoded+resized to ${size}x${size} PNG (${pngBuf.length} bytes) in ${Date.now() - tDec}ms`);
+
+    const tBle = Date.now();
+    await args.device.showImage(pngBuf);
+    log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
+  }
+
+  async _runProbeJob(args) {
+    await args.device.probeCapabilities();
   }
 }
 
