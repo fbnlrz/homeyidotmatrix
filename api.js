@@ -48,4 +48,13 @@ module.exports = {
     await homey.app.media.remove(params.name);
     return { ok: true };
   },
+
+  /**
+   * Aggregate diagnostic dump. Returns app + device state, image-pipeline
+   * cache stats, RSSI, recent log lines, last probe result per device — a
+   * single JSON object that's safe to paste into a bug report.
+   */
+  async diagnostic({ homey }) {
+    return homey.app.diagnostics.build();
+  },
 };

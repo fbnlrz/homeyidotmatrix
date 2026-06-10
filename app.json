@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": ["local"],
@@ -42,9 +42,10 @@
   "support": "https://community.homey.app/t/idotmatrix-app-matrix-devices/155964",
   "homeyCommunityTopicId": 155964,
   "api": {
-    "listMedia":   { "method": "GET",    "path": "/media" },
-    "uploadMedia": { "method": "POST",   "path": "/media/:name" },
-    "deleteMedia": { "method": "DELETE", "path": "/media/:name" }
+    "listMedia":     { "method": "GET",    "path": "/media" },
+    "uploadMedia":   { "method": "POST",   "path": "/media/:name" },
+    "deleteMedia":   { "method": "DELETE", "path": "/media/:name" },
+    "diagnostic":    { "method": "GET",    "path": "/diagnostic" }
   },
   "images": {
     "small": "/assets/images/small.png",
@@ -64,11 +65,7 @@
       "platforms": ["local"],
       "connectivity": ["ble"],
       "pair": [
-        {
-          "id": "list_devices",
-          "template": "list_devices",
-          "navigation": { "next": "add_devices" }
-        },
+        { "id": "list_devices", "template": "list_devices", "navigation": { "next": "add_devices" } },
         { "id": "add_devices", "template": "add_devices" }
       ],
       "images": {
@@ -110,9 +107,9 @@
               "label": { "en": "Base URL", "de": "Basis-URL", "nl": "Basis-URL" },
               "value": "",
               "hint": {
-                "en": "URL of a directory listing on your LAN (e.g. http://192.168.178.42:8080/idotmatrix/). Works with nginx autoindex, Apache, Python http.server, or any server that returns an HTML listing or an index.json. Used by the Show image from remote server Flow card.",
-                "de": "URL eines Verzeichnis-Listings im LAN (z.B. http://192.168.178.42:8080/idotmatrix/). Funktioniert mit nginx autoindex, Apache, Python http.server oder jedem Server, der ein HTML-Listing oder eine index.json liefert. Wird von der Flow-Karte 'Bild vom externen Server anzeigen' genutzt.",
-                "nl": "URL van een directory-listing op je LAN (bijv. http://192.168.178.42:8080/idotmatrix/). Werkt met nginx autoindex, Apache, Python http.server, of elke server die een HTML-listing of index.json teruggeeft. Wordt gebruikt door de Flow-kaart 'Toon afbeelding van externe server'."
+                "en": "URL of a directory listing on your LAN (e.g. http://192.168.178.42:8080/idotmatrix/). Works with nginx autoindex, Apache, Python http.server, or any server that returns an HTML listing or an index.json.",
+                "de": "URL eines Verzeichnis-Listings im LAN (z.B. http://192.168.178.42:8080/idotmatrix/). Funktioniert mit nginx autoindex, Apache, Python http.server oder jedem Server, der ein HTML-Listing oder eine index.json liefert.",
+                "nl": "URL van een directory-listing op je LAN (bijv. http://192.168.178.42:8080/idotmatrix/). Werkt met nginx autoindex, Apache, Python http.server, of elke server die een HTML-listing of index.json teruggeeft."
               }
             }
           ]
@@ -121,6 +118,17 @@
           "type": "group",
           "label": { "en": "Diagnostics", "de": "Diagnose", "nl": "Diagnose" },
           "children": [
+            {
+              "id": "last_rssi",
+              "type": "text",
+              "label": { "en": "Last RSSI", "de": "Letzter RSSI", "nl": "Laatste RSSI" },
+              "value": "",
+              "hint": {
+                "en": "Signal strength sampled periodically (lower numbers are weaker, e.g. -85 dBm = far away).",
+                "de": "Signalstärke wird periodisch gemessen (niedrigere Zahlen = schwächer, z.B. -85 dBm = weit weg).",
+                "nl": "Signaalsterkte wordt periodiek gemeten (lagere getallen = zwakker, bv. -85 dBm = ver weg)."
+              }
+            },
             {
               "id": "probe_result",
               "type": "textarea",
@@ -138,34 +146,85 @@
     }
   ],
   "flow": {
-    "actions": [
+    "triggers": [
       {
-        "id": "show_text",
+        "id": "device_connected",
         "title": {
-          "en": "Show text",
-          "de": "Text anzeigen",
-          "nl": "Tekst tonen"
+          "en": "Display connected",
+          "de": "Display verbunden",
+          "nl": "Display verbonden"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
+        "id": "device_disconnected",
+        "title": {
+          "en": "Display disconnected",
+          "de": "Display getrennt",
+          "nl": "Display losgekoppeld"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "is_connected",
+        "title": {
+          "en": "Display !{{is|isn't}} connected",
+          "de": "Display !{{ist|ist nicht}} verbunden",
+          "nl": "Display !{{is|is niet}} verbonden"
         },
         "titleFormatted": {
-          "en": "Show text [[text]] in [[color]] with mode [[mode]] at speed [[speed]]",
-          "de": "Text [[text]] in [[color]] mit Modus [[mode]] bei Geschwindigkeit [[speed]] anzeigen",
-          "nl": "Toon tekst [[text]] in [[color]] met modus [[mode]] op snelheid [[speed]]"
+          "en": "Display !{{is|isn't}} connected",
+          "de": "Display !{{ist|ist nicht}} verbunden",
+          "nl": "Display !{{is|is niet}} verbonden"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
+        "id": "brightness_above",
+        "title": {
+          "en": "Brightness !{{is|isn't}} above",
+          "de": "Helligkeit !{{ist|ist nicht}} über",
+          "nl": "Helderheid !{{is|is niet}} boven"
+        },
+        "titleFormatted": {
+          "en": "Brightness !{{is|isn't}} above [[percent]]%",
+          "de": "Helligkeit !{{ist|ist nicht}} über [[percent]]%",
+          "nl": "Helderheid !{{is|is niet}} boven [[percent]]%"
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
           {
-            "name": "text",
-            "type": "text",
-            "title": { "en": "Text", "de": "Text", "nl": "Tekst" }
-          },
+            "name": "percent",
+            "type": "number",
+            "title": { "en": "Percent", "de": "Prozent", "nl": "Percentage" },
+            "min": 0, "max": 100, "step": 1
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "show_text",
+        "title": { "en": "Show text", "de": "Text anzeigen", "nl": "Tekst tonen" },
+        "titleFormatted": {
+          "en": "Show text [[text]] in [[color]] mode [[mode]] speed [[speed]]",
+          "de": "Text [[text]] in [[color]] Modus [[mode]] Geschwindigkeit [[speed]] anzeigen",
+          "nl": "Toon tekst [[text]] in [[color]] modus [[mode]] snelheid [[speed]]"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "text", "type": "text", "title": { "en": "Text", "de": "Text", "nl": "Tekst" } },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
           {
-            "name": "color",
-            "type": "color",
-            "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" }
-          },
-          {
-            "name": "mode",
-            "type": "dropdown",
+            "name": "mode", "type": "dropdown",
             "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
             "values": [
               { "id": "0", "label": { "en": "Replace", "de": "Ersetzen", "nl": "Vervangen" } },
@@ -180,14 +239,83 @@
             ]
           },
           {
-            "name": "speed",
-            "type": "range",
+            "name": "speed", "type": "range",
             "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" },
-            "min": 1,
-            "max": 100,
-            "step": 1,
-            "value": 95
+            "min": 1, "max": 100, "step": 1, "value": 95
           }
+        ]
+      },
+      {
+        "id": "show_sensor_value",
+        "title": {
+          "en": "Show sensor value",
+          "de": "Sensor-Wert anzeigen",
+          "nl": "Sensorwaarde tonen"
+        },
+        "titleFormatted": {
+          "en": "Show [[label]] [[value]] [[unit]] ([[decimals]] dec) at [[speed]] in [[color]]",
+          "de": "[[label]] [[value]] [[unit]] ([[decimals]] Dez.) bei [[speed]] in [[color]] anzeigen",
+          "nl": "Toon [[label]] [[value]] [[unit]] ([[decimals]] dec) op [[speed]] in [[color]]"
+        },
+        "hint": {
+          "en": "Show a numeric value with a label and a unit (e.g. \"Temp 21 °C\"). Wire any Homey sensor or insight token to the value field.",
+          "de": "Zeigt einen Zahlenwert mit Label und Einheit an (z.B. \"Temp 21 °C\"). Verbinde einen beliebigen Sensor- oder Insight-Token mit dem Wert-Feld.",
+          "nl": "Toont een getalswaarde met label en eenheid (bijv. \"Temp 21 °C\"). Koppel een Homey-sensortoken aan het waarde-veld."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "label", "type": "text", "title": { "en": "Label", "de": "Bezeichnung", "nl": "Label" }, "placeholder": { "en": "e.g. Temp" } },
+          { "name": "value", "type": "text", "title": { "en": "Value", "de": "Wert", "nl": "Waarde" } },
+          { "name": "unit", "type": "text", "title": { "en": "Unit", "de": "Einheit", "nl": "Eenheid" }, "placeholder": { "en": "e.g. °C" } },
+          { "name": "decimals", "type": "number", "title": { "en": "Decimals", "de": "Nachkommastellen", "nl": "Decimalen" }, "min": 0, "max": 4, "step": 1, "value": 1 },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          { "name": "speed", "type": "range", "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" }, "min": 1, "max": 100, "step": 1, "value": 95 }
+        ]
+      },
+      {
+        "id": "show_notification",
+        "title": {
+          "en": "Show notification",
+          "de": "Benachrichtigung anzeigen",
+          "nl": "Notificatie tonen"
+        },
+        "titleFormatted": {
+          "en": "Show notification [[message]] in [[color]] at speed [[speed]]",
+          "de": "Benachrichtigung [[message]] in [[color]] bei Geschwindigkeit [[speed]] anzeigen",
+          "nl": "Toon notificatie [[message]] in [[color]] op snelheid [[speed]]"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "message", "type": "text", "title": { "en": "Message", "de": "Nachricht", "nl": "Bericht" } },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          { "name": "speed", "type": "range", "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" }, "min": 1, "max": 100, "step": 1, "value": 80 }
+        ]
+      },
+      {
+        "id": "show_sticker",
+        "title": {
+          "en": "Show built-in sticker",
+          "de": "Eingebauten Sticker anzeigen",
+          "nl": "Ingebouwde sticker tonen"
+        },
+        "titleFormatted": {
+          "en": "Show sticker [[sticker]] (fit: [[fit]], bg: [[background]])",
+          "de": "Sticker [[sticker]] anzeigen (Fit: [[fit]], BG: [[background]])",
+          "nl": "Toon sticker [[sticker]] (fit: [[fit]], achtergrond: [[background]])"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "sticker", "type": "autocomplete", "title": { "en": "Sticker", "de": "Sticker", "nl": "Sticker" }, "placeholder": { "en": "heart, fire, smile…" } },
+          {
+            "name": "fit", "type": "dropdown", "title": { "en": "Fit", "de": "Anpassung", "nl": "Passing" },
+            "values": [
+              { "id": "center", "label": { "en": "Center (no resize)", "de": "Zentriert (keine Skalierung)", "nl": "Gecentreerd" } },
+              { "id": "contain", "label": { "en": "Contain (letterbox)", "de": "Einpassen (Letterbox)", "nl": "Passend (letterbox)" } },
+              { "id": "cover", "label": { "en": "Cover (crop)", "de": "Füllen (zuschneiden)", "nl": "Vullen (bijsnijden)" } },
+              { "id": "stretch", "label": { "en": "Stretch", "de": "Strecken", "nl": "Uitrekken" } }
+            ]
+          },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } }
         ]
       },
       {
@@ -198,23 +326,29 @@
           "nl": "Toon afbeelding van externe server"
         },
         "titleFormatted": {
-          "en": "Show image [[file]] from remote server",
-          "de": "Bild [[file]] vom externen Server anzeigen",
-          "nl": "Toon afbeelding [[file]] van externe server"
+          "en": "Show image [[file]] from remote server (fit: [[fit]], bg: [[background]], dither: [[dither]])",
+          "de": "Bild [[file]] vom externen Server anzeigen (Fit: [[fit]], BG: [[background]], Dither: [[dither]])",
+          "nl": "Toon afbeelding [[file]] van externe server (fit: [[fit]], achtergrond: [[background]], dither: [[dither]])"
         },
         "hint": {
-          "en": "Lists images from the URL configured under device settings → Remote media server. Works with any HTTP directory listing (nginx autoindex, Apache, python -m http.server) or an index.json.",
-          "de": "Listet Bilder von der unter Geräteeinstellungen → Externer Media-Server konfigurierten URL. Funktioniert mit jedem HTTP-Verzeichnis-Listing (nginx autoindex, Apache, python -m http.server) oder einer index.json.",
-          "nl": "Toont afbeeldingen van de URL die is ingesteld onder apparaatinstellingen → Externe media-server. Werkt met elke HTTP directory listing (nginx autoindex, Apache, python -m http.server) of een index.json."
+          "en": "Lists images from the URL configured under device settings → Remote media server. Works with any HTTP directory listing (nginx autoindex, Apache, python -m http.server) or an index.json. Auto-converts and resizes any source format to the display.",
+          "de": "Listet Bilder von der unter Geräteeinstellungen → Externer Media-Server konfigurierten URL. Funktioniert mit jedem HTTP-Verzeichnis-Listing (nginx autoindex, Apache, python -m http.server) oder einer index.json. Konvertiert und skaliert jedes Quellformat automatisch auf die Display-Auflösung.",
+          "nl": "Toont afbeeldingen van de URL die is ingesteld onder apparaatinstellingen → Externe media-server. Werkt met elke HTTP directory listing (nginx autoindex, Apache, python -m http.server) of een index.json. Converteert en schaalt elk bronformaat automatisch naar de display-resolutie."
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "file", "type": "autocomplete", "title": { "en": "File", "de": "Datei", "nl": "Bestand" }, "placeholder": { "en": "Type to filter…" } },
           {
-            "name": "file",
-            "type": "autocomplete",
-            "title": { "en": "File", "de": "Datei", "nl": "Bestand" },
-            "placeholder": { "en": "Type to filter…", "de": "Tippen zum Filtern…", "nl": "Typ om te filteren…" }
-          }
+            "name": "fit", "type": "dropdown", "title": { "en": "Fit", "de": "Anpassung", "nl": "Passing" },
+            "values": [
+              { "id": "contain", "label": { "en": "Contain (letterbox)", "de": "Einpassen (Letterbox)", "nl": "Passend" } },
+              { "id": "cover", "label": { "en": "Cover (crop)", "de": "Füllen (zuschneiden)", "nl": "Vullen" } },
+              { "id": "stretch", "label": { "en": "Stretch", "de": "Strecken", "nl": "Uitrekken" } },
+              { "id": "center", "label": { "en": "Center (no resize)", "de": "Zentriert", "nl": "Gecentreerd" } }
+            ]
+          },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } },
+          { "name": "dither", "type": "checkbox", "title": { "en": "Dither (better for photos)", "de": "Dithering (besser für Fotos)", "nl": "Dithering (beter voor foto's)" }, "value": false }
         ]
       },
       {
@@ -225,23 +359,29 @@
           "nl": "Toon opgeslagen afbeelding"
         },
         "titleFormatted": {
-          "en": "Show stored image [[file]]",
-          "de": "Gespeichertes Bild [[file]] anzeigen",
-          "nl": "Toon opgeslagen afbeelding [[file]]"
+          "en": "Show stored image [[file]] (fit: [[fit]], bg: [[background]], dither: [[dither]])",
+          "de": "Gespeichertes Bild [[file]] anzeigen (Fit: [[fit]], BG: [[background]], Dither: [[dither]])",
+          "nl": "Toon opgeslagen afbeelding [[file]] (fit: [[fit]], achtergrond: [[background]], dither: [[dither]])"
         },
         "hint": {
-          "en": "Pick from images uploaded to this app's local media store (if available on this Homey). Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>.",
-          "de": "Wähle aus Bildern im lokalen Media-Store dieser App (falls verfügbar). Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<dateiname>.",
-          "nl": "Kies uit afbeeldingen die zijn geüpload naar de lokale media-store van deze app (indien beschikbaar). Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<bestandsnaam>."
+          "en": "Pick from images uploaded to this app's local media store. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>.",
+          "de": "Wähle aus Bildern im lokalen Media-Store dieser App. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<dateiname>.",
+          "nl": "Kies uit afbeeldingen in de lokale media-store. Upload via: POST http://<homey-ip>/api/app/com.idotmatrix/media/<bestandsnaam>."
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "file", "type": "autocomplete", "title": { "en": "File", "de": "Datei", "nl": "Bestand" }, "placeholder": { "en": "Type to filter…" } },
           {
-            "name": "file",
-            "type": "autocomplete",
-            "title": { "en": "File", "de": "Datei", "nl": "Bestand" },
-            "placeholder": { "en": "Type to filter…", "de": "Tippen zum Filtern…", "nl": "Typ om te filteren…" }
-          }
+            "name": "fit", "type": "dropdown", "title": { "en": "Fit", "de": "Anpassung", "nl": "Passing" },
+            "values": [
+              { "id": "contain", "label": { "en": "Contain (letterbox)", "de": "Einpassen (Letterbox)", "nl": "Passend" } },
+              { "id": "cover", "label": { "en": "Cover (crop)", "de": "Füllen (zuschneiden)", "nl": "Vullen" } },
+              { "id": "stretch", "label": { "en": "Stretch", "de": "Strecken", "nl": "Uitrekken" } },
+              { "id": "center", "label": { "en": "Center (no resize)", "de": "Zentriert", "nl": "Gecentreerd" } }
+            ]
+          },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } },
+          { "name": "dither", "type": "checkbox", "title": { "en": "Dither", "de": "Dithering", "nl": "Dithering" }, "value": false }
         ]
       },
       {
@@ -252,42 +392,114 @@
           "nl": "Toon afbeelding van URL"
         },
         "titleFormatted": {
-          "en": "Show image from [[url]] ([[kind]])",
-          "de": "Bild von [[url]] anzeigen ([[kind]])",
-          "nl": "Toon afbeelding van [[url]] ([[kind]])"
+          "en": "Show image from [[url]] ([[kind]], fit: [[fit]], bg: [[background]], dither: [[dither]])",
+          "de": "Bild von [[url]] anzeigen ([[kind]], Fit: [[fit]], BG: [[background]], Dither: [[dither]])",
+          "nl": "Toon afbeelding van [[url]] ([[kind]], fit: [[fit]], achtergrond: [[background]], dither: [[dither]])"
         },
         "hint": {
-          "en": "Fetches a PNG, JPG/JPEG, BMP, or GIF from the given URL and shows it on the display. GIFs are auto-detected and sent animated; other formats are decoded and resized to the display size.",
-          "de": "Lädt ein PNG, JPG/JPEG, BMP oder GIF von der URL und zeigt es auf dem Display. GIFs werden automatisch erkannt und animiert übertragen; andere Formate werden dekodiert und auf die Display-Größe skaliert.",
-          "nl": "Haalt een PNG, JPG/JPEG, BMP of GIF op van de opgegeven URL en toont het op het display. GIFs worden automatisch gedetecteerd en geanimeerd verzonden; andere formaten worden gedecodeerd en geschaald naar de display-grootte."
+          "en": "Fetches a PNG, JPG/JPEG, BMP, WEBP, or GIF from any HTTP/HTTPS URL and shows it on the display. Auto-converts and resizes to the display size; GIFs stay animated.",
+          "de": "Lädt ein PNG, JPG/JPEG, BMP, WEBP oder GIF von einer URL und zeigt es auf dem Display. Konvertiert und skaliert automatisch; GIFs bleiben animiert.",
+          "nl": "Haalt PNG, JPG/JPEG, BMP, WEBP of GIF op van een URL en toont het op het display. Converteert en schaalt automatisch; GIFs blijven geanimeerd."
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "url", "type": "text", "title": { "en": "Image URL", "de": "Bild-URL", "nl": "URL" }, "placeholder": { "en": "https://…/image.png" } },
           {
-            "name": "url",
-            "type": "text",
-            "title": { "en": "Image URL", "de": "Bild-URL", "nl": "Afbeelding-URL" },
-            "placeholder": { "en": "https://…/image.png", "de": "https://…/bild.jpg", "nl": "https://…/afbeelding.png" }
-          },
-          {
-            "name": "kind",
-            "type": "dropdown",
-            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
+            "name": "kind", "type": "dropdown", "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
             "values": [
               { "id": "auto", "label": { "en": "Auto-detect", "de": "Auto", "nl": "Automatisch" } },
-              { "id": "png", "label": { "en": "Force static (PNG/JPG)", "de": "Erzwinge statisch (PNG/JPG)", "nl": "Forceer statisch (PNG/JPG)" } },
-              { "id": "gif", "label": { "en": "Force animated (GIF)", "de": "Erzwinge animiert (GIF)", "nl": "Forceer geanimeerd (GIF)" } }
+              { "id": "png", "label": { "en": "Force static (PNG/JPG)", "de": "Erzwinge statisch", "nl": "Forceer statisch" } },
+              { "id": "gif", "label": { "en": "Force animated (GIF)", "de": "Erzwinge animiert", "nl": "Forceer geanimeerd" } }
             ]
-          }
+          },
+          {
+            "name": "fit", "type": "dropdown", "title": { "en": "Fit", "de": "Anpassung", "nl": "Passing" },
+            "values": [
+              { "id": "contain", "label": { "en": "Contain (letterbox)", "de": "Einpassen (Letterbox)", "nl": "Passend" } },
+              { "id": "cover", "label": { "en": "Cover (crop)", "de": "Füllen (zuschneiden)", "nl": "Vullen" } },
+              { "id": "stretch", "label": { "en": "Stretch", "de": "Strecken", "nl": "Uitrekken" } },
+              { "id": "center", "label": { "en": "Center (no resize)", "de": "Zentriert", "nl": "Gecentreerd" } }
+            ]
+          },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } },
+          { "name": "dither", "type": "checkbox", "title": { "en": "Dither (better for photos)", "de": "Dithering (besser für Fotos)", "nl": "Dithering" }, "value": false }
+        ]
+      },
+      {
+        "id": "playlist_start_remote",
+        "title": {
+          "en": "Start playlist (remote server)",
+          "de": "Playlist starten (externer Server)",
+          "nl": "Playlist starten (externe server)"
+        },
+        "titleFormatted": {
+          "en": "Cycle remote images every [[interval_seconds]]s (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
+          "de": "Externe Bilder alle [[interval_seconds]]s wechseln (Shuffle: [[shuffle]], Fit: [[fit]], BG: [[background]])",
+          "nl": "Externe afbeeldingen elke [[interval_seconds]]s wisselen (shuffle: [[shuffle]], fit: [[fit]], achtergrond: [[background]])"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "interval_seconds", "type": "number", "title": { "en": "Interval (s)", "de": "Intervall (s)", "nl": "Interval (s)" }, "min": 2, "max": 3600, "step": 1, "value": 15 },
+          { "name": "shuffle", "type": "checkbox", "title": { "en": "Shuffle", "de": "Zufallsreihenfolge", "nl": "Schudden" }, "value": false },
+          {
+            "name": "fit", "type": "dropdown", "title": { "en": "Fit", "de": "Anpassung", "nl": "Passing" },
+            "values": [
+              { "id": "contain", "label": { "en": "Contain", "de": "Einpassen", "nl": "Passend" } },
+              { "id": "cover", "label": { "en": "Cover", "de": "Füllen", "nl": "Vullen" } },
+              { "id": "stretch", "label": { "en": "Stretch", "de": "Strecken", "nl": "Uitrekken" } },
+              { "id": "center", "label": { "en": "Center", "de": "Zentriert", "nl": "Gecentreerd" } }
+            ]
+          },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } }
+        ]
+      },
+      {
+        "id": "playlist_start_store",
+        "title": {
+          "en": "Start playlist (local store)",
+          "de": "Playlist starten (lokaler Store)",
+          "nl": "Playlist starten (lokale store)"
+        },
+        "titleFormatted": {
+          "en": "Cycle stored images every [[interval_seconds]]s (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
+          "de": "Gespeicherte Bilder alle [[interval_seconds]]s wechseln (Shuffle: [[shuffle]], Fit: [[fit]], BG: [[background]])",
+          "nl": "Opgeslagen afbeeldingen elke [[interval_seconds]]s wisselen (shuffle: [[shuffle]], fit: [[fit]], achtergrond: [[background]])"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "interval_seconds", "type": "number", "title": { "en": "Interval (s)", "de": "Intervall (s)", "nl": "Interval (s)" }, "min": 2, "max": 3600, "step": 1, "value": 15 },
+          { "name": "shuffle", "type": "checkbox", "title": { "en": "Shuffle", "de": "Zufallsreihenfolge", "nl": "Schudden" }, "value": false },
+          {
+            "name": "fit", "type": "dropdown", "title": { "en": "Fit", "de": "Anpassung", "nl": "Passing" },
+            "values": [
+              { "id": "contain", "label": { "en": "Contain", "de": "Einpassen", "nl": "Passend" } },
+              { "id": "cover", "label": { "en": "Cover", "de": "Füllen", "nl": "Vullen" } },
+              { "id": "stretch", "label": { "en": "Stretch", "de": "Strecken", "nl": "Uitrekken" } },
+              { "id": "center", "label": { "en": "Center", "de": "Zentriert", "nl": "Gecentreerd" } }
+            ]
+          },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } }
+        ]
+      },
+      {
+        "id": "playlist_stop",
+        "title": {
+          "en": "Stop playlist",
+          "de": "Playlist stoppen",
+          "nl": "Playlist stoppen"
+        },
+        "titleFormatted": {
+          "en": "Stop playlist",
+          "de": "Playlist stoppen",
+          "nl": "Playlist stoppen"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
         ]
       },
       {
         "id": "show_clock",
-        "title": {
-          "en": "Show clock",
-          "de": "Uhr anzeigen",
-          "nl": "Toon klok"
-        },
+        "title": { "en": "Show clock", "de": "Uhr anzeigen", "nl": "Toon klok" },
         "titleFormatted": {
           "en": "Show clock style [[style]] in [[color]] (date: [[show_date]], 24h: [[hour24]])",
           "de": "Uhr-Stil [[style]] in [[color]] anzeigen (Datum: [[show_date]], 24h: [[hour24]])",
@@ -296,9 +508,7 @@
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
           {
-            "name": "style",
-            "type": "dropdown",
-            "title": { "en": "Style", "de": "Stil", "nl": "Stijl" },
+            "name": "style", "type": "dropdown", "title": { "en": "Style", "de": "Stil", "nl": "Stijl" },
             "values": [
               { "id": "0", "label": { "en": "Style 0", "de": "Stil 0", "nl": "Stijl 0" } },
               { "id": "1", "label": { "en": "Style 1", "de": "Stil 1", "nl": "Stijl 1" } },
@@ -310,30 +520,14 @@
               { "id": "7", "label": { "en": "Style 7", "de": "Stil 7", "nl": "Stijl 7" } }
             ]
           },
-          {
-            "name": "color",
-            "type": "color",
-            "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" }
-          },
-          {
-            "name": "show_date",
-            "type": "checkbox",
-            "title": { "en": "Show date", "de": "Datum anzeigen", "nl": "Datum tonen" }
-          },
-          {
-            "name": "hour24",
-            "type": "checkbox",
-            "title": { "en": "24h format", "de": "24h-Format", "nl": "24-uurs formaat" }
-          }
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          { "name": "show_date", "type": "checkbox", "title": { "en": "Show date", "de": "Datum anzeigen", "nl": "Datum tonen" } },
+          { "name": "hour24", "type": "checkbox", "title": { "en": "24h format", "de": "24h-Format", "nl": "24-uurs formaat" } }
         ]
       },
       {
         "id": "start_countdown",
-        "title": {
-          "en": "Countdown",
-          "de": "Countdown",
-          "nl": "Countdown"
-        },
+        "title": { "en": "Countdown", "de": "Countdown", "nl": "Countdown" },
         "titleFormatted": {
           "en": "Countdown [[action]] [[minutes]]m [[seconds]]s",
           "de": "Countdown [[action]] [[minutes]]m [[seconds]]s",
@@ -342,9 +536,7 @@
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
           {
-            "name": "action",
-            "type": "dropdown",
-            "title": { "en": "Action", "de": "Aktion", "nl": "Actie" },
+            "name": "action", "type": "dropdown", "title": { "en": "Action", "de": "Aktion", "nl": "Actie" },
             "values": [
               { "id": "0", "label": { "en": "Disable", "de": "Deaktivieren", "nl": "Uitschakelen" } },
               { "id": "1", "label": { "en": "Start", "de": "Start", "nl": "Start" } },
@@ -352,31 +544,13 @@
               { "id": "3", "label": { "en": "Restart", "de": "Neustart", "nl": "Herstart" } }
             ]
           },
-          {
-            "name": "minutes",
-            "type": "number",
-            "title": { "en": "Minutes", "de": "Minuten", "nl": "Minuten" },
-            "min": 0,
-            "max": 99,
-            "step": 1
-          },
-          {
-            "name": "seconds",
-            "type": "number",
-            "title": { "en": "Seconds", "de": "Sekunden", "nl": "Seconden" },
-            "min": 0,
-            "max": 59,
-            "step": 1
-          }
+          { "name": "minutes", "type": "number", "title": { "en": "Minutes", "de": "Minuten", "nl": "Minuten" }, "min": 0, "max": 99, "step": 1 },
+          { "name": "seconds", "type": "number", "title": { "en": "Seconds", "de": "Sekunden", "nl": "Seconden" }, "min": 0, "max": 59, "step": 1 }
         ]
       },
       {
         "id": "set_scoreboard",
-        "title": {
-          "en": "Set scoreboard",
-          "de": "Scoreboard setzen",
-          "nl": "Scorebord instellen"
-        },
+        "title": { "en": "Set scoreboard", "de": "Scoreboard setzen", "nl": "Scorebord instellen" },
         "titleFormatted": {
           "en": "Set scoreboard [[score_a]] : [[score_b]]",
           "de": "Scoreboard [[score_a]] : [[score_b]] setzen",
@@ -384,31 +558,13 @@
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
-          {
-            "name": "score_a",
-            "type": "number",
-            "title": { "en": "Score A", "de": "Punktestand A", "nl": "Score A" },
-            "min": 0,
-            "max": 999,
-            "step": 1
-          },
-          {
-            "name": "score_b",
-            "type": "number",
-            "title": { "en": "Score B", "de": "Punktestand B", "nl": "Score B" },
-            "min": 0,
-            "max": 999,
-            "step": 1
-          }
+          { "name": "score_a", "type": "number", "title": { "en": "Score A", "de": "Punktestand A", "nl": "Score A" }, "min": 0, "max": 999, "step": 1 },
+          { "name": "score_b", "type": "number", "title": { "en": "Score B", "de": "Punktestand B", "nl": "Score B" }, "min": 0, "max": 999, "step": 1 }
         ]
       },
       {
         "id": "chronograph",
-        "title": {
-          "en": "Chronograph",
-          "de": "Stoppuhr",
-          "nl": "Chronograaf"
-        },
+        "title": { "en": "Chronograph", "de": "Stoppuhr", "nl": "Chronograaf" },
         "titleFormatted": {
           "en": "Chronograph [[action]]",
           "de": "Stoppuhr [[action]]",
@@ -417,9 +573,7 @@
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
           {
-            "name": "action",
-            "type": "dropdown",
-            "title": { "en": "Action", "de": "Aktion", "nl": "Actie" },
+            "name": "action", "type": "dropdown", "title": { "en": "Action", "de": "Aktion", "nl": "Actie" },
             "values": [
               { "id": "0", "label": { "en": "Reset", "de": "Zurücksetzen", "nl": "Reset" } },
               { "id": "1", "label": { "en": "Start", "de": "Start", "nl": "Start" } },

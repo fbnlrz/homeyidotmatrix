@@ -1,62 +1,71 @@
 'use strict';
 
 const Homey = require('homey');
-const { Jimp } = require('jimp');
-const { resizeAnimatedGif } = require('./lib/gifResize');
+const path = require('path');
 const MediaStore = require('./lib/MediaStore');
 const RemoteMediaIndex = require('./lib/RemoteMediaIndex');
+const StickerPack = require('./lib/StickerPack');
+const { ImagePipeline, isGif } = require('./lib/ImagePipeline');
+const DiagnosticBundle = require('./lib/DiagnosticBundle');
 
-async function _fetchUrlBuffer(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-  const ab = await res.arrayBuffer();
-  return Buffer.from(ab);
-}
-
-/**
- * Detect "this looks like a GIF" from the magic bytes. Used to route
- * GIF89a/GIF87a via the animated GIF path; everything else (JPG/PNG/WEBP/BMP)
- * gets decoded by Jimp and re-encoded as PNG.
- */
-function _isGif(buf) {
-  return buf.length >= 6
-    && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46
-    && buf[3] === 0x38 && (buf[4] === 0x37 || buf[4] === 0x39) && buf[5] === 0x61;
-}
-
-/**
- * Decode any image format Jimp understands (JPG, PNG, BMP, TIFF, GIF first frame),
- * resize to `size`x`size`, and return a PNG-encoded Buffer ready for the iDotMatrix
- * image opcode.
- */
-async function _toPngForDisplay(buf, size) {
-  const img = await Jimp.read(buf);
-  img.resize({ w: size, h: size });
-  // colorType 2 (RGB, no alpha) + max deflate cuts a 32x32 photo from
-  // ~2900 B (default RGBA) to ~600 B — fewer BLE chunks, faster display update.
-  return img.getBuffer('image/png', { colorType: 2, deflateLevel: 9 });
+async function _fetchUrlBuffer(url, { timeoutMs = 15000 } = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 class IDMApp extends Homey.App {
 
   async onInit() {
+    this.diagnostics = new DiagnosticBundle(this);
+    this._wrapLog();
     this.log('iDotMatrix app starting');
+
     this.media = new MediaStore(this);
     await this.media.init();
     if (this.media.dir) {
       this.log(`media store ready at ${this.media.dir}`);
       this.log('upload media via:  POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>');
     }
+
+    this.stickers = new StickerPack(__dirname);
+    const stickerList = await this.stickers.list();
+    this.log(`sticker pack: ${stickerList.length} bundled assets`);
+
+    this.imagePipeline = new ImagePipeline({ logger: (...a) => this.log('[pipeline]', ...a) });
+
     this._registerFlowActions();
+    this._registerFlowTriggers();
+    this._registerFlowConditions();
+  }
+
+  _wrapLog() {
+    const origLog = this.log.bind(this);
+    const origError = this.error.bind(this);
+    this.log = (...a) => { this.diagnostics.pushLog('log', a); origLog(...a); };
+    this.error = (...a) => { this.diagnostics.pushLog('error', a); origError(...a); };
   }
 
   _registerFlowActions() {
-    const reg = (id, handler) => {
-      const card = this.homey.flow.getActionCard(id);
-      card.registerRunListener(async args => handler.call(this, args));
+    const card = id => this.homey.flow.getActionCard(id);
+    const fire = (id, handler) => {
+      card(id).registerRunListener(async args => {
+        // All image / display actions run async to dodge the 10s Flow timeout.
+        // Errors are logged on the device so the user can find them.
+        Promise.resolve()
+          .then(() => handler.call(this, args))
+          .catch(err => args.device && args.device.error && args.device.error(`${id} failed: ${err.message}`));
+      });
     };
 
-    reg('show_text', async args => {
+    fire('show_text', async args => {
       await args.device.showText(args.text, {
         color: args.color,
         mode: parseInt(args.mode, 10),
@@ -64,69 +73,119 @@ class IDMApp extends Homey.App {
       });
     });
 
-    const showRemote = this.homey.flow.getActionCard('show_remote_image');
-    showRemote.registerRunListener(async args => {
-      this._runRemoteImageJob(args).catch(err => {
-        args.device.error(`show_remote_image failed: ${err.message}`);
+    // ---- image cards ----
+
+    fire('show_image_url', async args => {
+      const buf = await _fetchUrlBuffer(args.url);
+      await this._renderImage(args.device, buf, {
+        kind: args.kind,
+        fit: args.fit,
+        background: args.background,
+        dither: args.dither,
+        sourceLabel: args.url,
       });
     });
-    showRemote.registerArgumentAutocompleteListener('file', async (query, args) => {
+
+    fire('show_stored_image', async args => {
+      const name = args.file && args.file.name;
+      if (!name) throw new Error('no file selected');
+      const buf = await this.media.read(name);
+      await this._renderImage(args.device, buf, {
+        kind: 'auto',
+        fit: args.fit,
+        background: args.background,
+        dither: args.dither,
+        sourceLabel: `store/${name}`,
+      });
+    });
+
+    fire('show_remote_image', async args => {
       const baseUrl = args.device.getSetting('media_base_url');
-      if (!baseUrl) {
-        return [{
-          name: '(no URL configured)',
-          description: 'Open this device → settings → Remote media server',
-          disabled: true,
-        }];
-      }
-      try {
-        const items = await RemoteMediaIndex.list(baseUrl);
-        const q = String(query || '').toLowerCase();
-        return items
-          .filter(it => !q || it.name.toLowerCase().includes(q))
-          .slice(0, 50)
-          .map(it => ({
-            name: it.name,
-            description: it.size ? `${(it.size / 1024).toFixed(1)} KB` : baseUrl,
-          }));
-      } catch (e) {
-        return [{
-          name: `(error: ${e.message})`,
-          description: baseUrl,
-          disabled: true,
-        }];
-      }
-    });
-
-    const showStored = this.homey.flow.getActionCard('show_stored_image');
-    showStored.registerRunListener(async args => {
-      this._runStoredImageJob(args).catch(err => {
-        args.device.error(`show_stored_image failed: ${err.message}`);
-      });
-    });
-    showStored.registerArgumentAutocompleteListener('file', async query => {
-      const items = await this.media.list();
-      const q = String(query || '').toLowerCase();
-      return items
-        .filter(it => !q || it.name.toLowerCase().includes(q))
-        .map(it => ({
-          name: it.name,
-          description: `${(it.size / 1024).toFixed(1)} KB`,
-        }));
-    });
-
-    reg('show_image_url', async args => {
-      // Homey Flow actions have a 10s hard timeout. Fetching a multi-hundred-KB
-      // JPG, decoding+resizing with Jimp, then BLE-chunking can take much longer
-      // on Homey's CPU — so we kick the work off and return immediately. The
-      // IDMClient serializes writes internally, so two clicks won't interleave.
-      // Errors are logged to the device.
-      this._runImageJob(args).catch(err => {
-        args.device.error(`show_image_url failed: ${err.message}`);
+      if (!baseUrl) throw new Error('media_base_url not set on device');
+      const name = args.file && args.file.name;
+      if (!name) throw new Error('no file selected');
+      const { buffer, url } = await RemoteMediaIndex.fetchFile(baseUrl, name);
+      await this._renderImage(args.device, buffer, {
+        kind: 'auto',
+        fit: args.fit,
+        background: args.background,
+        dither: args.dither,
+        sourceLabel: url,
       });
     });
 
-    reg('show_clock', async args => {
+    fire('show_sticker', async args => {
+      const name = args.sticker && args.sticker.name;
+      if (!name) throw new Error('no sticker selected');
+      const buf = await this.stickers.read(name);
+      await this._renderImage(args.device, buf, {
+        kind: 'auto',
+        fit: args.fit || 'center',
+        background: args.background,
+        sourceLabel: `sticker/${name}`,
+      });
+    });
+
+    fire('show_sensor_value', async args => {
+      const label = (args.label || '').trim();
+      const value = args.value;
+      const unit = (args.unit || '').trim();
+      const text = [label, _formatValue(value, args.decimals), unit].filter(Boolean).join(' ').trim();
+      await args.device.showText(text, {
+        color: args.color || '#ffffff',
+        mode: 1,
+        speed: parseInt(args.speed, 10) || 95,
+      });
+    });
+
+    fire('show_notification', async args => {
+      const text = (args.message || '').trim();
+      await args.device.showText(text, {
+        color: args.color || '#ffaa00',
+        mode: 1,
+        speed: parseInt(args.speed, 10) || 80,
+      });
+    });
+
+    // ---- playlist cards ----
+
+    fire('playlist_start_remote', async args => {
+      const baseUrl = args.device.getSetting('media_base_url');
+      if (!baseUrl) throw new Error('media_base_url not set on device');
+      args.device.startPlaylist({
+        resolveItems: async () => (await RemoteMediaIndex.list(baseUrl)).map(i => i.name),
+        sendItem: async name => {
+          const { buffer } = await RemoteMediaIndex.fetchFile(baseUrl, name);
+          await this._renderImage(args.device, buffer, {
+            kind: 'auto', fit: args.fit, background: args.background, sourceLabel: name,
+          });
+        },
+        intervalSeconds: parseInt(args.interval_seconds, 10),
+        shuffle: !!args.shuffle,
+      });
+    });
+
+    fire('playlist_start_store', async args => {
+      args.device.startPlaylist({
+        resolveItems: async () => (await this.media.list()).map(i => i.name),
+        sendItem: async name => {
+          const buf = await this.media.read(name);
+          await this._renderImage(args.device, buf, {
+            kind: 'auto', fit: args.fit, background: args.background, sourceLabel: name,
+          });
+        },
+        intervalSeconds: parseInt(args.interval_seconds, 10),
+        shuffle: !!args.shuffle,
+      });
+    });
+
+    fire('playlist_stop', async args => {
+      args.device.stopPlaylist();
+    });
+
+    // ---- other ----
+
+    fire('show_clock', async args => {
       await args.device.showClock({
         style: parseInt(args.style, 10),
         showDate: !!args.show_date,
@@ -135,7 +194,7 @@ class IDMApp extends Homey.App {
       });
     });
 
-    reg('start_countdown', async args => {
+    fire('start_countdown', async args => {
       await args.device.setCountdown({
         action: parseInt(args.action, 10),
         minutes: parseInt(args.minutes, 10),
@@ -143,112 +202,130 @@ class IDMApp extends Homey.App {
       });
     });
 
-    reg('set_scoreboard', async args => {
-      await args.device.setScoreboard(
-        parseInt(args.score_a, 10),
-        parseInt(args.score_b, 10),
-      );
+    fire('set_scoreboard', async args => {
+      await args.device.setScoreboard(parseInt(args.score_a, 10), parseInt(args.score_b, 10));
     });
 
-    reg('chronograph', async args => {
+    fire('chronograph', async args => {
       await args.device.chronograph(parseInt(args.action, 10));
     });
 
-    reg('probe_capabilities', async args => {
-      // Same async pattern — full probe takes ~10s.
-      this._runProbeJob(args).catch(err => {
-        args.device.error(`probe_capabilities failed: ${err.message}`);
-      });
+    fire('probe_capabilities', async args => {
+      await args.device.probeCapabilities();
+    });
+
+    // Sticker autocomplete
+    card('show_sticker').registerArgumentAutocompleteListener('sticker', async query => {
+      const items = await this.stickers.list();
+      const q = String(query || '').toLowerCase();
+      return items
+        .filter(i => !q || i.name.toLowerCase().includes(q))
+        .map(i => ({ name: i.name, description: 'bundled' }));
+    });
+
+    // Remote-server file autocomplete
+    card('show_remote_image').registerArgumentAutocompleteListener('file', async (query, args) => {
+      const baseUrl = args.device.getSetting('media_base_url');
+      if (!baseUrl) {
+        return [{ name: '(no URL configured)', description: 'Open device settings → Remote media server' }];
+      }
+      try {
+        const items = await RemoteMediaIndex.list(baseUrl);
+        const q = String(query || '').toLowerCase();
+        return items
+          .filter(i => !q || i.name.toLowerCase().includes(q))
+          .slice(0, 50)
+          .map(i => ({ name: i.name, description: i.size ? `${(i.size / 1024).toFixed(1)} KB` : baseUrl }));
+      } catch (e) {
+        return [{ name: `(error: ${e.message})`, description: baseUrl }];
+      }
+    });
+
+    // Stored-file autocomplete
+    card('show_stored_image').registerArgumentAutocompleteListener('file', async query => {
+      const items = await this.media.list();
+      const q = String(query || '').toLowerCase();
+      return items
+        .filter(i => !q || i.name.toLowerCase().includes(q))
+        .map(i => ({ name: i.name, description: `${(i.size / 1024).toFixed(1)} KB` }));
     });
   }
 
-  async _runImageJob(args) {
-    const log = (...m) => args.device.log('[image]', ...m);
+  _registerFlowTriggers() {
+    // Triggers are configured via app.json; we just need to grab handles so
+    // device.js can call .trigger(device, tokens, state).
+    this._triggers = {
+      connected: this.homey.flow.getDeviceTriggerCard('device_connected'),
+      disconnected: this.homey.flow.getDeviceTriggerCard('device_disconnected'),
+    };
+  }
+
+  _registerFlowConditions() {
+    const card = id => this.homey.flow.getConditionCard(id);
+    card('is_connected').registerRunListener(async args => {
+      return args.device && args.device.client && args.device.client.isConnected();
+    });
+    card('brightness_above').registerRunListener(async args => {
+      const dim = args.device.getCapabilityValue('dim');
+      const threshold = parseFloat(args.percent) / 100;
+      return typeof dim === 'number' && dim > threshold;
+    });
+  }
+
+  /**
+   * Unified rendering path. Every image source — URL, remote server, local
+   * store, sticker pack — goes through this so behaviour, caching, fit
+   * options and conversion are identical regardless of where the bytes
+   * came from.
+   */
+  async _renderImage(device, buf, opts = {}) {
+    const log = (...m) => device.log('[image]', ...m);
     const t0 = Date.now();
-    log('fetching', args.url);
-    const buf = await _fetchUrlBuffer(args.url);
-    log(`fetched ${buf.length} bytes in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
+    const sourceLabel = opts.sourceLabel || '(unnamed)';
+    log(`source=${sourceLabel} bytes=${buf.length} magic=${buf.slice(0, 4).toString('hex')}`);
 
-    const kind = args.kind || 'auto';
-    const treatAsGif = kind === 'gif' || (kind === 'auto' && _isGif(buf));
+    const kind = opts.kind || 'auto';
+    const looksGif = isGif(buf);
+    const treatAsGif = kind === 'gif' || (kind === 'auto' && looksGif);
 
-    if (treatAsGif) {
-      const size = args.device._pixelSize();
-      const srcW = buf.readUInt16LE(6);
-      const srcH = buf.readUInt16LE(8);
-      let toSend = buf;
-      if (srcW !== size || srcH !== size) {
-        const tR = Date.now();
-        toSend = resizeAnimatedGif(buf, size);
-        log(`resized GIF ${srcW}x${srcH} → ${size}x${size}: ${buf.length}B → ${toSend.length}B in ${Date.now() - tR}ms`);
+    const targetSize = device._pixelSize();
+    const fit = opts.fit || 'contain';
+    const background = opts.background || '#000000';
+
+    // For static non-GIF input the pipeline returns a PNG buffer. For GIF
+    // input it returns a resized animated GIF.
+    const prepared = await this.imagePipeline.prepare(buf, {
+      targetSize,
+      fit,
+      background,
+      dither: !!opts.dither,
+    });
+    log(`prepared kind=${prepared.kind} bytes=${prepared.buffer.length} fromCache=${prepared.fromCache} in ${Date.now() - t0}ms`);
+
+    const tBle = Date.now();
+    if (treatAsGif && prepared.kind === 'gif') {
+      await device.showGif(prepared.buffer);
+    } else {
+      // If user forced 'png' on a GIF, the pipeline still emitted gif; fall back
+      // to converting the first frame via a one-shot static path. Otherwise just
+      // send the PNG.
+      if (prepared.kind === 'gif') {
+        log('forced PNG mode but input was GIF — sending GIF as-is');
+        await device.showGif(prepared.buffer);
       } else {
-        log(`GIF already ${size}x${size}, sending as-is`);
+        await device.showImage(prepared.buffer);
       }
-      const tBle = Date.now();
-      await args.device.showGif(toSend);
-      log(`GIF BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
-      return;
     }
-
-    const size = args.device._pixelSize();
-    const tDec = Date.now();
-    const pngBuf = await _toPngForDisplay(buf, size);
-    log(`decoded+resized to ${size}x${size} PNG (${pngBuf.length} bytes) in ${Date.now() - tDec}ms`);
-
-    const tBle = Date.now();
-    await args.device.showImage(pngBuf);
-    log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
+    log(`BLE upload done in ${Date.now() - tBle}ms total ${Date.now() - t0}ms`);
   }
+}
 
-  async _runRemoteImageJob(args) {
-    const log = (...m) => args.device.log('[remote]', ...m);
-    const baseUrl = args.device.getSetting('media_base_url');
-    if (!baseUrl) throw new Error('media_base_url not set on device');
-    const name = args.file && args.file.name;
-    if (!name) throw new Error('no file selected');
-    const t0 = Date.now();
-    const { buffer: buf, url } = await RemoteMediaIndex.fetchFile(baseUrl, name);
-    log(`fetched ${url} (${buf.length} bytes) in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
-    await this._sendBufferToDevice(args.device, buf, log, t0);
-  }
-
-  async _runStoredImageJob(args) {
-    const log = (...m) => args.device.log('[stored]', ...m);
-    const file = args.file && args.file.name;
-    if (!file) throw new Error('no file selected');
-    const t0 = Date.now();
-    const buf = await this.media.read(file);
-    log(`read ${file} (${buf.length} bytes) in ${Date.now() - t0}ms, magic=${buf.slice(0, 4).toString('hex')}`);
-    await this._sendBufferToDevice(args.device, buf, log, t0);
-  }
-
-  async _sendBufferToDevice(device, buf, log, t0) {
-    const size = device._pixelSize();
-    if (_isGif(buf)) {
-      const srcW = buf.readUInt16LE(6);
-      const srcH = buf.readUInt16LE(8);
-      let toSend = buf;
-      if (srcW !== size || srcH !== size) {
-        const tR = Date.now();
-        toSend = resizeAnimatedGif(buf, size);
-        log(`resized GIF ${srcW}x${srcH} → ${size}x${size}: ${buf.length}B → ${toSend.length}B in ${Date.now() - tR}ms`);
-      }
-      const tBle = Date.now();
-      await device.showGif(toSend);
-      log(`GIF BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
-      return;
-    }
-    const tDec = Date.now();
-    const pngBuf = await _toPngForDisplay(buf, size);
-    log(`decoded+resized to ${size}x${size} PNG (${pngBuf.length} bytes) in ${Date.now() - tDec}ms`);
-    const tBle = Date.now();
-    await device.showImage(pngBuf);
-    log(`BLE upload done in ${Date.now() - tBle}ms, total ${Date.now() - t0}ms`);
-  }
-
-  async _runProbeJob(args) {
-    await args.device.probeCapabilities();
-  }
+function _formatValue(value, decimals) {
+  const d = parseInt(decimals, 10);
+  const n = parseFloat(value);
+  if (Number.isFinite(n) && Number.isFinite(d) && d >= 0) return n.toFixed(d);
+  if (Number.isFinite(n)) return String(n);
+  return String(value ?? '');
 }
 
 module.exports = IDMApp;
