@@ -215,9 +215,9 @@
         "id": "show_text",
         "title": { "en": "Show text", "de": "Text anzeigen", "nl": "Tekst tonen" },
         "titleFormatted": {
-          "en": "Show text [[text]] in [[color]] mode [[mode]] speed [[speed]]",
-          "de": "Text [[text]] in [[color]] Modus [[mode]] Geschwindigkeit [[speed]] anzeigen",
-          "nl": "Toon tekst [[text]] in [[color]] modus [[mode]] snelheid [[speed]]"
+          "en": "Show text [[text]] in [[color]] mode [[mode]] speed [[speed]] mirror [[mirror]]",
+          "de": "Text [[text]] in [[color]] Modus [[mode]] Geschwindigkeit [[speed]] gespiegelt [[mirror]] anzeigen",
+          "nl": "Toon tekst [[text]] in [[color]] modus [[mode]] snelheid [[speed]] gespiegeld [[mirror]]"
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
@@ -242,6 +242,11 @@
             "name": "speed", "type": "range",
             "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" },
             "min": 1, "max": 100, "step": 1, "value": 95
+          },
+          {
+            "name": "mirror", "type": "checkbox",
+            "title": { "en": "Mirror (for camera reflection)", "de": "Spiegeln (für Kamera-Reflexion)", "nl": "Spiegelen (voor camera-reflectie)" },
+            "value": false
           }
         ]
       },
@@ -253,9 +258,9 @@
           "nl": "Sensorwaarde tonen"
         },
         "titleFormatted": {
-          "en": "Show [[label]] [[value]] [[unit]] ([[decimals]] dec) at [[speed]] in [[color]]",
-          "de": "[[label]] [[value]] [[unit]] ([[decimals]] Dez.) bei [[speed]] in [[color]] anzeigen",
-          "nl": "Toon [[label]] [[value]] [[unit]] ([[decimals]] dec) op [[speed]] in [[color]]"
+          "en": "Show [[label]] [[value]] [[unit]] ([[decimals]] dec) at [[speed]] in [[color]] mirror [[mirror]]",
+          "de": "[[label]] [[value]] [[unit]] ([[decimals]] Dez.) bei [[speed]] in [[color]] gespiegelt [[mirror]] anzeigen",
+          "nl": "Toon [[label]] [[value]] [[unit]] ([[decimals]] dec) op [[speed]] in [[color]] gespiegeld [[mirror]]"
         },
         "hint": {
           "en": "Show a numeric value with a label and a unit (e.g. \"Temp 21 °C\"). Wire any Homey sensor or insight token to the value field.",
@@ -269,7 +274,12 @@
           { "name": "unit", "type": "text", "title": { "en": "Unit", "de": "Einheit", "nl": "Eenheid" }, "placeholder": { "en": "e.g. °C" } },
           { "name": "decimals", "type": "number", "title": { "en": "Decimals", "de": "Nachkommastellen", "nl": "Decimalen" }, "min": 0, "max": 4, "step": 1, "value": 1 },
           { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
-          { "name": "speed", "type": "range", "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" }, "min": 1, "max": 100, "step": 1, "value": 95 }
+          { "name": "speed", "type": "range", "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" }, "min": 1, "max": 100, "step": 1, "value": 95 },
+          {
+            "name": "mirror", "type": "checkbox",
+            "title": { "en": "Mirror (for camera reflection)", "de": "Spiegeln (für Kamera-Reflexion)", "nl": "Spiegelen (voor camera-reflectie)" },
+            "value": false
+          }
         ]
       },
       {
@@ -280,15 +290,20 @@
           "nl": "Notificatie tonen"
         },
         "titleFormatted": {
-          "en": "Show notification [[message]] in [[color]] at speed [[speed]]",
-          "de": "Benachrichtigung [[message]] in [[color]] bei Geschwindigkeit [[speed]] anzeigen",
-          "nl": "Toon notificatie [[message]] in [[color]] op snelheid [[speed]]"
+          "en": "Show notification [[message]] in [[color]] at speed [[speed]] mirror [[mirror]]",
+          "de": "Benachrichtigung [[message]] in [[color]] bei Geschwindigkeit [[speed]] gespiegelt [[mirror]] anzeigen",
+          "nl": "Toon notificatie [[message]] in [[color]] op snelheid [[speed]] gespiegeld [[mirror]]"
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
           { "name": "message", "type": "text", "title": { "en": "Message", "de": "Nachricht", "nl": "Bericht" } },
           { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
-          { "name": "speed", "type": "range", "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" }, "min": 1, "max": 100, "step": 1, "value": 80 }
+          { "name": "speed", "type": "range", "title": { "en": "Speed", "de": "Geschwindigkeit", "nl": "Snelheid" }, "min": 1, "max": 100, "step": 1, "value": 80 },
+          {
+            "name": "mirror", "type": "checkbox",
+            "title": { "en": "Mirror (for camera reflection)", "de": "Spiegeln (für Kamera-Reflexion)", "nl": "Spiegelen (voor camera-reflectie)" },
+            "value": false
+          }
         ]
       },
       {

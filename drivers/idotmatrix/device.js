@@ -98,10 +98,10 @@ class IDMDevice extends Homey.Device {
     await this.client.write(IDMProtocol.buildBrightness(percent));
   }
 
-  async showText(text, { color = '#ff0000', mode = 1, speed = 95 } = {}) {
+  async showText(text, { color = '#ff0000', mode = 1, speed = 95, mirror = false } = {}) {
     const { r, g, b } = _parseColor(color);
     const buf = IDMProtocol.buildText(text || '', {
-      mode, speed, colorMode: 1, r, g, b,
+      mode, speed, colorMode: 1, r, g, b, mirror: !!mirror,
     });
     await this.client.write(buf, { withResponse: true });
   }

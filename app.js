@@ -87,6 +87,7 @@ class IDMApp extends Homey.App {
         color: args.color,
         mode: parseInt(args.mode, 10),
         speed: parseInt(args.speed, 10),
+        mirror: !!args.mirror,
       });
     });
 
@@ -152,6 +153,7 @@ class IDMApp extends Homey.App {
         color: args.color || '#ffffff',
         mode: 1,
         speed: parseInt(args.speed, 10) || 95,
+        mirror: !!args.mirror,
       });
     });
 
@@ -161,6 +163,7 @@ class IDMApp extends Homey.App {
         color: args.color || '#ffaa00',
         mode: 1,
         speed: parseInt(args.speed, 10) || 80,
+        mirror: !!args.mirror,
       });
     });
 
