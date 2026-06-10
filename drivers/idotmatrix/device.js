@@ -16,28 +16,28 @@ class IDMDevice extends Homey.Device {
       uuid: id,
       address,
       onLog: (...a) => this.log(...a),
+      onConnected: () => this._onClientConnected(),
+      onDisconnected: () => this._onClientDisconnected(),
     });
 
     this.registerCapabilityListener('onoff', v => this._setOnOff(v));
     this.registerCapabilityListener('dim', v => this._setBrightness(v));
 
-    this._connectInBackground();
+    // Mark unavailable until the first successful connect; the client's
+    // background loop retries forever (display may be powered off for hours).
+    await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
+    this.client.start();
   }
 
-  async _connectInBackground() {
-    try {
-      await this.client.connect();
-      await this.setAvailable();
-      this.log('Connected to iDotMatrix');
-      // Sync time on (re)connect — clock mode needs it.
-      try { await this.client.write(IDMProtocol.buildSetTime(new Date())); } catch (e) { /* ignore */ }
-    } catch (e) {
-      this.log('Initial connect failed:', e.message);
-      await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
-      // The client's reconnect loop will keep trying via the disconnect handler;
-      // but on initial failure there's no peripheral yet, so we retry here.
-      setTimeout(() => this._connectInBackground(), 10000);
-    }
+  async _onClientConnected() {
+    this.log('Connected to iDotMatrix');
+    await this.setAvailable().catch(() => {});
+    // Sync time on every (re)connect — clock mode needs it.
+    try { await this.client.write(IDMProtocol.buildSetTime(new Date())); } catch (e) { /* ignore */ }
+  }
+
+  async _onClientDisconnected() {
+    await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
   }
 
   async _setOnOff(value) {
