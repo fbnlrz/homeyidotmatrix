@@ -47,10 +47,27 @@ class IDMApp extends Homey.App {
   }
 
   _wrapLog() {
+    // Newer Homey SDKs mark this.log/this.error non-writable. We try to wrap
+    // them so every log line lands in the diagnostic ring buffer; if the
+    // property is locked, the diagnostic bundle still works for explicit
+    // push() calls from inside this app — we just won't auto-capture log()
+    // output from other parts of the SDK.
     const origLog = this.log.bind(this);
     const origError = this.error.bind(this);
-    this.log = (...a) => { this.diagnostics.pushLog('log', a); origLog(...a); };
-    this.error = (...a) => { this.diagnostics.pushLog('error', a); origError(...a); };
+    const wrappedLog = (...a) => { this.diagnostics.pushLog('log', a); origLog(...a); };
+    const wrappedError = (...a) => { this.diagnostics.pushLog('error', a); origError(...a); };
+    for (const [name, fn] of [['log', wrappedLog], ['error', wrappedError]]) {
+      try {
+        Object.defineProperty(this, name, {
+          value: fn,
+          writable: true,
+          configurable: true,
+          enumerable: false,
+        });
+      } catch (e) {
+        // Property locked by the SDK — skip silently.
+      }
+    }
   }
 
   _registerFlowActions() {
