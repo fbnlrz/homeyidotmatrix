@@ -119,5 +119,20 @@ eq('reset[1]', reset[1], Buffer.from('0500048050', 'hex'));
   eq('text header tail', txt.subarray(13, 16), Buffer.from([0, 0, 12]));
 }
 
+// Mirror flips horizontal scroll direction so the camera reflection reads
+// in the natural direction. meta byte 4 (after 16-byte header + 2 num_chars
+// + 2 static) carries the mode.
+{
+  const MODE_OFFSET = 16 + 2 + 2;
+  const m1 = P.buildText('A', { mode: 1, mirror: false });
+  const m1m = P.buildText('A', { mode: 1, mirror: true });
+  const m2m = P.buildText('A', { mode: 2, mirror: true });
+  const m3m = P.buildText('A', { mode: 3, mirror: true });
+  eq('mode 1 no-mirror keeps 1', Buffer.from([m1[MODE_OFFSET]]), Buffer.from([1]));
+  eq('mode 1 mirrored → 2', Buffer.from([m1m[MODE_OFFSET]]), Buffer.from([2]));
+  eq('mode 2 mirrored → 1', Buffer.from([m2m[MODE_OFFSET]]), Buffer.from([1]));
+  eq('mode 3 mirrored stays 3', Buffer.from([m3m[MODE_OFFSET]]), Buffer.from([3]));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
