@@ -109,9 +109,16 @@
   <script type="text/javascript">
 
     function onHomeyReady(Homey) {
-      Homey.ready();
+      // Always remove the spinner first — even if our init code throws.
+      try { Homey.ready(); } catch (e) { console.error('Homey.ready failed', e); }
       window._homey = Homey;
-      document.getElementById('activity-refresh').addEventListener('click', refreshActivity);
+      const safe = (label, fn) => {
+        try { fn(); } catch (e) { console.error('[settings init]', label, e); }
+      };
+      safe('activity refresh button', () => {
+        const el = document.getElementById('activity-refresh');
+        if (el) el.addEventListener('click', refreshActivity);
+      });
 
       function showMsg(id, text, ok) {
         const el = document.getElementById(id);
@@ -256,10 +263,10 @@
         } catch (e) { showError(e, 'msg-editor'); }
       });
 
-      buildGrid(32);
-      refresh();
-      buildPreviews();
-      refreshActivity();
+      safe('pixel grid', () => buildGrid(32));
+      safe('file list', () => refresh());
+      safe('preview tiles', () => buildPreviews());
+      safe('activity log', () => refreshActivity());
     }
 
     function buildPreviews() {
