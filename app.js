@@ -5,6 +5,7 @@ const path = require('path');
 const MediaStore = require('./lib/MediaStore');
 const RemoteMediaIndex = require('./lib/RemoteMediaIndex');
 const StickerPack = require('./lib/StickerPack');
+const ActivityLog = require('./lib/ActivityLog');
 const { ImagePipeline, isGif } = require('./lib/ImagePipeline');
 const DiagnosticBundle = require('./lib/DiagnosticBundle');
 
@@ -36,6 +37,7 @@ class IDMApp extends Homey.App {
     }
 
     this.stickers = new StickerPack(__dirname);
+    this.activity = new ActivityLog(50);
     const stickerList = await this.stickers.list();
     this.log(`sticker pack: ${stickerList.length} bundled assets`);
 
@@ -90,6 +92,55 @@ class IDMApp extends Homey.App {
         mirror: !!args.mirror,
         colorMode: parseInt(args.color_mode, 10),
       });
+      this.activity.add({ device: args.device.getName(), type: 'text', text: args.text });
+    });
+
+    fire('show_animation', async args => {
+      await args.device.showAnimation(args.animation);
+    });
+
+    fire('show_progress_bar', async args => {
+      await args.device.showProgressBar(
+        parseInt(args.percent, 10),
+        args.color || '#00ff44',
+        args.background || '#222222',
+      );
+      this.activity.add({ device: args.device.getName(), type: 'progress', percent: args.percent });
+    });
+
+    fire('show_meter', async args => {
+      await args.device.showMeter(
+        parseFloat(args.value),
+        parseFloat(args.max),
+        { color: args.color || '#00ff44', bg: args.background || '#222222' },
+      );
+    });
+
+    fire('show_for_seconds', async args => {
+      args.device.showTemporarily(
+        () => args.device.showText(args.text, { color: args.color, mode: 1, speed: 95 }),
+        parseInt(args.seconds, 10),
+        args.restore || 'black',
+      );
+    });
+
+    fire('show_on_all', async args => {
+      const driver = this.homey.drivers.getDriver('idotmatrix');
+      const devices = driver ? driver.getDevices() : [];
+      const buf = await _fetchUrlBuffer(args.url);
+      for (const dev of devices) {
+        this._renderImage(dev, buf, { kind: 'auto', sourceLabel: args.url }).catch(e => dev.error('show_on_all:', e.message));
+      }
+    });
+
+    fire('play_sequence', async args => {
+      const steps = _parseSequenceString(args.steps);
+      args.device._sequenceStopped = false;
+      args.device.playSequence(steps, { loop: !!args.loop }).catch(e => args.device.error('play_sequence:', e.message));
+    });
+
+    fire('stop_sequence', async args => {
+      args.device.stopSequence();
     });
 
     fire('show_solid_color', async args => {
@@ -382,6 +433,39 @@ class IDMApp extends Homey.App {
     }
     log(`BLE upload done in ${Date.now() - tBle}ms total ${Date.now() - t0}ms`);
   }
+}
+
+/**
+ * Parse "text:Hello@2s, color:#ff0000@1s, animation:plasma@3s" into
+ * an array of { type, value, delayMs }. The @Ns suffix becomes the delay
+ * after that step. Whitespace forgiving.
+ */
+function _parseSequenceString(s) {
+  if (!s) return [];
+  const out = [];
+  for (const raw of String(s).split(',')) {
+    const item = raw.trim();
+    if (!item) continue;
+    const atIdx = item.lastIndexOf('@');
+    let body = item;
+    let delayMs = 0;
+    if (atIdx > 0) {
+      body = item.slice(0, atIdx).trim();
+      const t = item.slice(atIdx + 1).trim();
+      const m = t.match(/^(\d+(?:\.\d+)?)(ms|s|m)?$/);
+      if (m) {
+        const v = parseFloat(m[1]);
+        const u = m[2] || 's';
+        delayMs = u === 'ms' ? v : u === 'm' ? v * 60000 : v * 1000;
+      }
+    }
+    const colon = body.indexOf(':');
+    if (colon < 0) continue;
+    const type = body.slice(0, colon).trim();
+    const value = body.slice(colon + 1).trim();
+    out.push({ type, value, delayMs });
+  }
+  return out;
 }
 
 function _parseFlowColor(input) {

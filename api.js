@@ -62,6 +62,35 @@ module.exports = {
    * Live preview: take a PNG buffer from the settings-page editor and push
    * it to every paired iDotMatrix device without saving to the library.
    */
+  async activityLog({ homey }) {
+    return homey.app.activity ? homey.app.activity.list() : [];
+  },
+
+  async previewAnimation({ homey, params }) {
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    if (!devices.length) throw new Error('no devices paired');
+    for (const dev of devices) await dev.showAnimation(params.name);
+    return { ok: true, devices: devices.length };
+  },
+
+  async previewEffect({ homey, params }) {
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    if (!devices.length) throw new Error('no devices paired');
+    for (const dev of devices) await dev.showEffect(parseInt(params.style, 10));
+    return { ok: true, devices: devices.length };
+  },
+
+  async previewSolidColor({ homey, body }) {
+    const color = body && body.color ? body.color : '#ffffff';
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    if (!devices.length) throw new Error('no devices paired');
+    for (const dev of devices) await dev.showSolidColor(color);
+    return { ok: true, devices: devices.length };
+  },
+
   async previewPixelArt({ homey, body }) {
     let buf;
     if (Buffer.isBuffer(body)) buf = body;

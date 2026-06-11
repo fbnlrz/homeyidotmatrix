@@ -8,6 +8,8 @@ const Heartbeat = require('../../lib/Heartbeat');
 const Playlist = require('../../lib/Playlist');
 const WordClock = require('../../lib/WordClock');
 const Weather = require('../../lib/Weather');
+const Animations = require('../../lib/Animations');
+const BrightnessCurve = require('../../lib/BrightnessCurve');
 
 // fa03 ack pattern: 0x05 0x00 <cmd> <subcmd> 0x01. The image upload opcode
 // uses cmd 0x01 with subcmd 0x00 (per-chunk accepted) or 0x03 (upload done).
@@ -50,6 +52,12 @@ class IDMDevice extends Homey.Device {
 
     // Periodic RSSI sample so settings + diagnostic export reflect a fresh value.
     this._rssiTimer = this.homey.setInterval(() => this._sampleRssi(), 90_000);
+
+    // Day/night brightness curve — opt-in via settings, polls every minute.
+    this.brightnessCurve = new BrightnessCurve({
+      device: this, client: this.client, onLog: (...a) => this.log(...a),
+    });
+    this.brightnessCurve.start();
   }
 
   _brightnessPercent() {
@@ -148,6 +156,124 @@ class IDMDevice extends Homey.Device {
     const w = await Weather.fetchCurrent({ latitude, longitude, units });
     const text = `${Math.round(w.temperature)}${w.temperatureUnit} ${w.icon}`;
     await this.showText(text, { color, mode, speed: 90, mirror });
+  }
+
+  /** Play a procedural animation (matrix, gol, dvd, plasma, starfield, fireworks). */
+  async showAnimation(name) {
+    const fn = Animations[name];
+    if (!fn) throw new Error(`unknown animation: ${name}`);
+    const size = this._pixelSize();
+    const gif = fn(size);
+    await this.showGif(gif);
+    this._logActivity({ type: 'animation', name });
+  }
+
+  /** Show a horizontal progress bar. */
+  async showProgressBar(percent, fg = '#00ff44', bg = '#222222') {
+    const c = _parseColor(fg);
+    const b = _parseColor(bg);
+    const size = this._pixelSize();
+    const gif = Animations.progressBar(
+      size, percent,
+      _packRgb(c.r, c.g, c.b),
+      _packRgb(b.r, b.g, b.b),
+      0xffffff,
+    );
+    await this.showGif(gif);
+  }
+
+  /** Show a meter: value/max as a horizontal bar plus optional value text. */
+  async showMeter(value, max, { color = '#00ff44', bg = '#222222' } = {}) {
+    const percent = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+    await this.showProgressBar(percent, color, bg);
+  }
+
+  /**
+   * Show one piece of content, then automatically restore something else after
+   * a delay. If `restore` is 'off' → screen off; 'clock' → clock; 'black' →
+   * solid black; 'effect:N' → built-in effect N.
+   */
+  showTemporarily(showFn, seconds, restore = 'black') {
+    showFn().then(() => {
+      this._scheduleRestore(seconds, restore);
+    }).catch(e => this.error('showTemporarily:', e.message));
+  }
+
+  _scheduleRestore(seconds, restore) {
+    if (this._restoreTimer) clearTimeout(this._restoreTimer);
+    this._restoreTimer = setTimeout(async () => {
+      this._restoreTimer = null;
+      try {
+        if (restore === 'off') {
+          await this._setOnOff(false);
+        } else if (restore === 'clock') {
+          await this.showClock({});
+        } else if (restore && restore.startsWith('effect:')) {
+          const n = parseInt(restore.slice(7), 10);
+          await this.showEffect(n);
+        } else {
+          await this.showSolidColor('#000000');
+        }
+      } catch (e) {
+        this.error('auto-restore failed:', e.message);
+      }
+    }, Math.max(1, seconds) * 1000);
+  }
+
+  /**
+   * Play a small sequence of items with delays in between. Each item is
+   * `{ type, value, delayMs }` — supported types:
+   *   text          — value = text
+   *   color         — value = hex color
+   *   sticker       — value = filename (resolved via app.stickers)
+   *   animation     — value = animation name
+   *   effect        — value = style index
+   *   off / on      — toggle screen
+   */
+  async playSequence(steps, { loop = false } = {}) {
+    const run = async () => {
+      for (const s of steps) {
+        try {
+          await this._runSequenceStep(s);
+        } catch (e) {
+          this.error('[sequence]', s, e.message);
+        }
+        if (s.delayMs) await new Promise(r => setTimeout(r, s.delayMs));
+      }
+    };
+    do {
+      await run();
+    } while (loop && !this._sequenceStopped);
+  }
+
+  stopSequence() { this._sequenceStopped = true; }
+
+  async _runSequenceStep(s) {
+    switch (s.type) {
+      case 'text':       return this.showText(s.value || '', s.opts || {});
+      case 'color':      return this.showSolidColor(s.value);
+      case 'animation':  return this.showAnimation(s.value);
+      case 'effect':     return this.showEffect(parseInt(s.value, 10));
+      case 'sticker':    {
+        const app = this.homey.app;
+        if (!app.stickers) throw new Error('sticker pack unavailable');
+        const buf = await app.stickers.read(s.value);
+        await this.showImage(buf);
+        return;
+      }
+      case 'on':         return this._setOnOff(true);
+      case 'off':        return this._setOnOff(false);
+      default: throw new Error(`unknown step type: ${s.type}`);
+    }
+  }
+
+  _logActivity(event) {
+    if (this.homey.app && this.homey.app.activity) {
+      this.homey.app.activity.add({
+        device: this.getName(),
+        ...event,
+      });
+    }
   }
 
   _pixelSize() {
@@ -264,7 +390,10 @@ class IDMDevice extends Homey.Device {
   async onDeleted() {
     this.log('Device deleted, disconnecting');
     this.stopPlaylist();
+    this.stopSequence();
+    if (this._restoreTimer) clearTimeout(this._restoreTimer);
     if (this.heartbeat) this.heartbeat.stop();
+    if (this.brightnessCurve) this.brightnessCurve.stop();
     if (this._rssiTimer) this.homey.clearInterval(this._rssiTimer);
     try { await this.client.disconnect(); } catch (e) { /* ignore */ }
   }
@@ -302,6 +431,10 @@ async function _renderTestPatternPng(size) {
     img.setPixelColor(yellow >>> 0, c + i, c);
   }
   return img.getBuffer('image/png', { colorType: 2, deflateLevel: 9 });
+}
+
+function _packRgb(r, g, b) {
+  return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
 }
 
 function _parseColor(input) {

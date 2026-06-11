@@ -27,6 +27,16 @@
     .msg.ok { background: #e9f7ec; color: #1b6f2c; display: block; }
     .msg.err { background: #fdecec; color: #8a1f1f; display: block; }
     select, input[type=color], input[type=number] { padding: 4px 6px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 10px 0; }
+    .preview-grid button { padding: 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+    .preview-grid button:hover { border-color: #ff3366; }
+    .preview-grid .color-chip { height: 28px; border-radius: 4px; margin-bottom: 4px; }
+    .symbol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; margin: 10px 0; }
+    .symbol-grid button { padding: 8px; font-size: 18px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
+    .symbol-grid button:hover { border-color: #ff3366; }
+    h3 { font-size: 14px; margin: 14px 0 6px; color: #555; }
+    .activity-row { padding: 4px 0; border-bottom: 1px solid #eee; }
+    .activity-row .when { color: #888; margin-right: 8px; }
   </style>
 </head>
 <body>
@@ -45,6 +55,27 @@
     </div>
     <input type="file" id="filepicker" multiple accept="image/png,image/jpeg,image/gif,image/bmp,image/webp" style="display:none"/>
     <div id="msg-upload" class="msg"></div>
+  </section>
+
+  <section>
+    <h2>Previews</h2>
+    <p>Click any item to immediately send it to every paired display.</p>
+    <h3>Animations</h3>
+    <div id="anim-grid" class="preview-grid"></div>
+    <h3>Built-in effects</h3>
+    <div id="effect-grid" class="preview-grid"></div>
+    <h3>Color presets</h3>
+    <div id="color-grid" class="preview-grid"></div>
+    <h3>Symbol palette</h3>
+    <p>Click a symbol to copy it to the clipboard — paste into any text Flow card.</p>
+    <div id="symbol-grid" class="symbol-grid"></div>
+    <div id="msg-preview" class="msg"></div>
+  </section>
+
+  <section>
+    <h2>Recent activity</h2>
+    <button id="activity-refresh">Refresh</button>
+    <div id="activity-log" style="font-size:12px; margin-top:8px;"></div>
   </section>
 
   <section>
@@ -77,6 +108,8 @@
 
     function onHomeyReady(Homey) {
       Homey.ready();
+      window._homey = Homey;
+      document.getElementById('activity-refresh').addEventListener('click', refreshActivity);
 
       function showMsg(id, text, ok) {
         const el = document.getElementById(id);
@@ -221,6 +254,110 @@
 
       buildGrid(32);
       refresh();
+      buildPreviews();
+      refreshActivity();
+    }
+
+    function buildPreviews() {
+      const ANIMS = [
+        ['matrixRain', 'Matrix rain'],
+        ['gameOfLife', 'Game of Life'],
+        ['dvdBouncer', 'DVD bouncer'],
+        ['plasma', 'Plasma'],
+        ['starfield', 'Starfield'],
+        ['fireworks', 'Fireworks'],
+      ];
+      const EFFECTS = [
+        ['0', 'Horizontal rainbow'],
+        ['1', 'Random color pixels'],
+        ['2', 'Random white on color'],
+        ['3', 'Vertical rainbow'],
+        ['4', 'Diagonal rainbow ↗'],
+        ['5', 'Diagonal rainbow ↘'],
+        ['6', 'Random colored pixels'],
+      ];
+      const COLORS = [
+        ['#ff0000', 'Red'], ['#00ff00', 'Green'], ['#0000ff', 'Blue'],
+        ['#ffaa00', 'Orange'], ['#ff00ff', 'Magenta'], ['#00ffff', 'Cyan'],
+        ['#ffffff', 'White'], ['#ff3366', 'Brand'], ['#ffdd00', 'Yellow'],
+        ['#88ff00', 'Lime'], ['#9933ff', 'Purple'], ['#000000', 'Black'],
+      ];
+      const SYMBOLS = ['°', '★', '♥', '☀', '☁', '☂', '☃', '☎', '✓', '✗', '→', '←', '↑', '↓', '⏰', '€', '£', '¥', '!', '?', '#', '+', '-', '*'];
+
+      const a = document.getElementById('anim-grid');
+      a.innerHTML = '';
+      ANIMS.forEach(([id, label]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.addEventListener('click', () => preview('POST', '/preview-animation/' + id));
+        a.appendChild(b);
+      });
+
+      const e = document.getElementById('effect-grid');
+      e.innerHTML = '';
+      EFFECTS.forEach(([id, label]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.addEventListener('click', () => preview('POST', '/preview-effect/' + id));
+        e.appendChild(b);
+      });
+
+      const c = document.getElementById('color-grid');
+      c.innerHTML = '';
+      COLORS.forEach(([hex, label]) => {
+        const b = document.createElement('button');
+        const chip = document.createElement('div');
+        chip.className = 'color-chip';
+        chip.style.background = hex;
+        b.appendChild(chip);
+        b.appendChild(document.createTextNode(label));
+        b.addEventListener('click', () => preview('POST', '/preview-solid-color', { color: hex }));
+        c.appendChild(b);
+      });
+
+      const s = document.getElementById('symbol-grid');
+      s.innerHTML = '';
+      SYMBOLS.forEach(sym => {
+        const b = document.createElement('button');
+        b.textContent = sym;
+        b.title = 'click to copy';
+        b.addEventListener('click', () => {
+          navigator.clipboard.writeText(sym).then(() => {
+            document.getElementById('msg-preview').className = 'msg ok';
+            document.getElementById('msg-preview').textContent = 'copied: ' + sym;
+          });
+        });
+        s.appendChild(b);
+      });
+    }
+
+    function preview(method, path, body) {
+      const Homey = window._homey;
+      Homey.api(method, path, body).then(() => {
+        const el = document.getElementById('msg-preview');
+        el.className = 'msg ok';
+        el.textContent = 'sent to display';
+      }).catch(err => {
+        const el = document.getElementById('msg-preview');
+        el.className = 'msg err';
+        el.textContent = err.message || String(err);
+      });
+    }
+
+    function refreshActivity() {
+      const Homey = window._homey;
+      Homey.api('GET', '/activity').then(items => {
+        const root = document.getElementById('activity-log');
+        if (!items.length) {
+          root.innerHTML = '<p style="color:#888">No activity yet.</p>';
+          return;
+        }
+        root.innerHTML = items.map(it => {
+          const when = new Date(it.ts).toLocaleTimeString();
+          const what = it.type + (it.text ? ': ' + it.text : '') + (it.name ? ': ' + it.name : '') + (it.percent !== undefined ? ': ' + it.percent + '%' : '');
+          return '<div class="activity-row"><span class="when">' + when + '</span>' + (it.device || '') + ' — ' + what + '</div>';
+        }).join('');
+      }).catch(() => {});
     }
   </script>
 </body>
