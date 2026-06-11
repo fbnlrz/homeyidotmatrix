@@ -420,6 +420,22 @@ class IDMDevice extends Homey.Device {
     return result;
   }
 
+  /** Stage-2 AE probe: classify the challenge as fresh nonce vs fixed value, try auth responses. */
+  async probeAeChallenge() {
+    if (!this.client.isConnected()) await this.client.connect();
+    const result = await IDMProbe.probeAeChallenge(this.client, {
+      onLog: (...a) => this.log('[ae-challenge]', ...a),
+    });
+    const json = JSON.stringify(result, null, 2);
+    this.log(`AE challenge probe: verdict=${result.nonceTest.verdict}, productive auth probes=${result.productiveAuthProbes.length}`);
+    try {
+      await this.setSettings({ ae_probe_result: json });
+    } catch (e) {
+      this.log('Failed to persist AE challenge result:', e.message);
+    }
+    return result;
+  }
+
   async probeCapabilities() {
     if (!this.client.isConnected()) await this.client.connect();
     const topology = await IDMProbe.probeBleTopology(this.client.peripheral);

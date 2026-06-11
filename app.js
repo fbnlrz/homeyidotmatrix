@@ -374,6 +374,10 @@ class IDMApp extends Homey.App {
       await args.device.probeAeService();
     });
 
+    fire('probe_ae_challenge', async args => {
+      await args.device.probeAeChallenge();
+    });
+
     fire('probe_capabilities', async args => {
       await args.device.probeCapabilities();
     });

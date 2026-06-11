@@ -1048,6 +1048,27 @@
         ]
       },
       {
+        "id": "probe_ae_challenge",
+        "title": {
+          "en": "Deep probe 0x00AE (challenge/auth)",
+          "de": "Tiefer 0x00AE-Probe (Challenge/Auth)",
+          "nl": "Diepe 0x00AE-probe (challenge/auth)"
+        },
+        "titleFormatted": {
+          "en": "Deep probe 0x00AE on [[device]] — classify challenge + try auth shapes",
+          "de": "Tiefer 0x00AE-Probe auf [[device]] — Challenge klassifizieren + Auth-Antworten testen",
+          "nl": "Diepe 0x00AE-probe op [[device]] — challenge classificeren + auth-antwoorden testen"
+        },
+        "hint": {
+          "en": "Stage 2 of the 0x00AE reverse-engineering. Sends 0x00 five times to test if the 16-byte response is a fresh cryptographic nonce or a fixed device ID, then tries common auth-response shapes (echo, zero-pad, XOR-mask, inverted bits). Result lands in device settings.",
+          "de": "Stufe 2 des 0x00AE-Reverse-Engineerings. Sendet 0x00 fünfmal um zu klären ob die 16-Byte-Antwort eine frische Krypto-Nonce oder eine feste Geräte-ID ist, testet dann übliche Auth-Antwort-Formen (Echo, Null-Padding, XOR-Maske, invertierte Bits). Ergebnis landet in den Geräte-Einstellungen.",
+          "nl": "Fase 2 van de 0x00AE reverse-engineering. Verstuurt 0x00 vijfmaal om te bepalen of het 16-byte antwoord een verse cryptografische nonce of een vast apparaat-ID is, en probeert dan gebruikelijke auth-antwoorden (echo, nul-padding, XOR-masker, geïnverteerde bits)."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
         "id": "probe_ae_service",
         "title": {
           "en": "Probe 0x00AE service (reverse-engineering)",
