@@ -6,6 +6,8 @@ const IDMClient = require('../../lib/IDMClient');
 const IDMProbe = require('../../lib/IDMProbe');
 const Heartbeat = require('../../lib/Heartbeat');
 const Playlist = require('../../lib/Playlist');
+const WordClock = require('../../lib/WordClock');
+const Weather = require('../../lib/Weather');
 
 // fa03 ack pattern: 0x05 0x00 <cmd> <subcmd> 0x01. The image upload opcode
 // uses cmd 0x01 with subcmd 0x00 (per-chunk accepted) or 0x03 (upload done).
@@ -98,12 +100,54 @@ class IDMDevice extends Homey.Device {
     await this.client.write(IDMProtocol.buildBrightness(percent));
   }
 
-  async showText(text, { color = '#ff0000', mode = 1, speed = 95, mirror = false } = {}) {
+  async showText(text, { color = '#ff0000', mode = 1, speed = 95, mirror = false, colorMode = 1 } = {}) {
     const { r, g, b } = _parseColor(color);
     const buf = IDMProtocol.buildText(text || '', {
-      mode, speed, colorMode: 1, r, g, b, mirror: !!mirror,
+      mode, speed, colorMode, r, g, b, mirror: !!mirror,
     });
     await this.client.write(buf, { withResponse: true });
+  }
+
+  /** Fill the whole display with a solid RGB color (instant single opcode). */
+  async showSolidColor(color) {
+    const { r, g, b } = _parseColor(color);
+    await this.client.write(IDMProtocol.buildFullscreenColor(r, g, b));
+  }
+
+  /** Trigger one of the device's 7 built-in animated effect styles (0-6). */
+  async showEffect(style, colors = [[255, 0, 0], [0, 0, 255]]) {
+    await this.client.write(IDMProtocol.buildEffect(style, colors));
+  }
+
+  /** Blink between color and black `times` cycles. */
+  async flash({ color = '#ffffff', times = 5, onMs = 150, offMs = 150 } = {}) {
+    const c = _parseColor(color);
+    for (let i = 0; i < times; i++) {
+      await this.client.write(IDMProtocol.buildFullscreenColor(c.r, c.g, c.b));
+      await new Promise(r => setTimeout(r, onMs));
+      await this.client.write(IDMProtocol.buildFullscreenColor(0, 0, 0));
+      if (i < times - 1) await new Promise(r => setTimeout(r, offMs));
+    }
+  }
+
+  /** Procedural alignment pattern: checkerboard + corner markers + center cross. */
+  async showTestPattern() {
+    const size = this._pixelSize();
+    const png = await _renderTestPatternPng(size);
+    await this.showImage(png);
+  }
+
+  /** "It is twenty past seven" style time in EN/DE/NL. */
+  async showWordClock({ locale = 'en', color = '#ffffff', mode = 1, mirror = false } = {}) {
+    const text = WordClock.format(locale, new Date());
+    await this.showText(text, { color, mode, speed: 90, mirror });
+  }
+
+  /** Fetch temperature from open-meteo and scroll "21°C *" style. */
+  async showWeather({ latitude, longitude, units = 'celsius', color = '#80c0ff', mode = 1, mirror = false } = {}) {
+    const w = await Weather.fetchCurrent({ latitude, longitude, units });
+    const text = `${Math.round(w.temperature)}${w.temperatureUnit} ${w.icon}`;
+    await this.showText(text, { color, mode, speed: 90, mirror });
   }
 
   _pixelSize() {
@@ -224,6 +268,40 @@ class IDMDevice extends Homey.Device {
     if (this._rssiTimer) this.homey.clearInterval(this._rssiTimer);
     try { await this.client.disconnect(); } catch (e) { /* ignore */ }
   }
+}
+
+async function _renderTestPatternPng(size) {
+  const { Jimp } = require('jimp');
+  const black = (((0 << 24) | (0 << 16) | (0 << 8) | 0xff) >>> 0);
+  const img = new Jimp({ width: size, height: size, color: black });
+  // Checkerboard
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const on = ((x >> 2) + (y >> 2)) & 1;
+      const v = on ? 64 : 0;
+      img.setPixelColor((((v << 24) | (v << 16) | (v << 8) | 0xff) >>> 0), x, y);
+    }
+  }
+  // Corner markers
+  const corners = [
+    [0, 0, 0xff0000ff],
+    [size - 3, 0, 0x00ff00ff],
+    [0, size - 3, 0x0000ffff],
+    [size - 3, size - 3, 0xffffffff],
+  ];
+  for (const [cx, cy, color] of corners) {
+    for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) {
+      img.setPixelColor(color >>> 0, cx + dx, cy + dy);
+    }
+  }
+  // Center yellow cross
+  const c = Math.floor(size / 2);
+  const yellow = 0xffff00ff;
+  for (let i = -3; i <= 3; i++) {
+    img.setPixelColor(yellow >>> 0, c, c + i);
+    img.setPixelColor(yellow >>> 0, c + i, c);
+  }
+  return img.getBuffer('image/png', { colorType: 2, deflateLevel: 9 });
 }
 
 function _parseColor(input) {

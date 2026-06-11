@@ -109,6 +109,22 @@ eq('reset[1]', reset[1], Buffer.from('0500048050', 'hex'));
   eq('gif tail bytes', c.subarray(13, 16), Buffer.from([5, 0, 13]));
 }
 
+// Fullscreen color opcode (python: bytearray([7, 0, 2, 2, r, g, b]))
+eq('fullscreen red',   P.buildFullscreenColor(255, 0, 0),   Buffer.from([7, 0, 2, 2, 255, 0, 0]));
+eq('fullscreen black', P.buildFullscreenColor(0, 0, 0),     Buffer.from([7, 0, 2, 2, 0, 0, 0]));
+
+// Effect opcode (python: bytearray([length, 0, 3, 2, style, 90, rgb_count, ...rgb]))
+{
+  const e = P.buildEffect(0, [[255, 0, 0], [0, 0, 255]]);
+  eq('effect rainbow 2 colors', e,
+     Buffer.from([12, 0, 3, 2, 0, 90, 2, 255, 0, 0, 0, 0, 255]));
+}
+{
+  const e = P.buildEffect(6, [[1, 2, 3], [4, 5, 6], [7, 8, 9]]);
+  eq('effect 3 colors', e,
+     Buffer.from([15, 0, 3, 2, 6, 90, 3, 1, 2, 3, 4, 5, 6, 7, 8, 9]));
+}
+
 // Text packet header layout
 {
   const txt = P.buildText('A', { r: 255, g: 0, b: 0 });

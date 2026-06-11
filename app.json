@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": ["local"],
@@ -212,17 +212,162 @@
     ],
     "actions": [
       {
+        "id": "show_solid_color",
+        "title": { "en": "Fill display with color", "de": "Display mit Farbe füllen", "nl": "Vul display met kleur" },
+        "titleFormatted": {
+          "en": "Fill display with [[color]]",
+          "de": "Display mit [[color]] füllen",
+          "nl": "Vul display met [[color]]"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } }
+        ]
+      },
+      {
+        "id": "show_effect",
+        "title": { "en": "Show built-in effect", "de": "Eingebauten Effekt zeigen", "nl": "Toon ingebouwd effect" },
+        "titleFormatted": {
+          "en": "Show effect [[style]] with [[color1]] + [[color2]]",
+          "de": "Effekt [[style]] mit [[color1]] + [[color2]] zeigen",
+          "nl": "Toon effect [[style]] met [[color1]] + [[color2]]"
+        },
+        "hint": {
+          "en": "Triggers one of the device's 7 built-in animated effects (rainbow, random pixels, etc.) — runs on the device, no upload needed.",
+          "de": "Löst einen von 7 eingebauten Animations-Effekten aus (Regenbogen, Zufalls-Pixel, etc.) — läuft auf dem Gerät, kein Upload nötig.",
+          "nl": "Activeert een van de 7 ingebouwde animatie-effecten (regenboog, willekeurige pixels, etc.) — draait op het apparaat."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "style", "type": "dropdown",
+            "title": { "en": "Style", "de": "Stil", "nl": "Stijl" },
+            "values": [
+              { "id": "0", "label": { "en": "Horizontal rainbow", "de": "Horizontaler Regenbogen", "nl": "Horizontale regenboog" } },
+              { "id": "1", "label": { "en": "Random color pixels", "de": "Zufällige Farbpixel", "nl": "Willekeurige kleurpixels" } },
+              { "id": "2", "label": { "en": "Random white on color", "de": "Zufälliges Weiß auf Farbe", "nl": "Willekeurig wit op kleur" } },
+              { "id": "3", "label": { "en": "Vertical rainbow", "de": "Vertikaler Regenbogen", "nl": "Verticale regenboog" } },
+              { "id": "4", "label": { "en": "Diagonal rainbow up", "de": "Diagonaler Regenbogen ↗", "nl": "Diagonale regenboog ↗" } },
+              { "id": "5", "label": { "en": "Diagonal rainbow down", "de": "Diagonaler Regenbogen ↘", "nl": "Diagonale regenboog ↘" } },
+              { "id": "6", "label": { "en": "Random colored pixels", "de": "Zufällig gefärbte Pixel", "nl": "Willekeurig gekleurde pixels" } }
+            ]
+          },
+          { "name": "color1", "type": "color", "title": { "en": "Color 1", "de": "Farbe 1", "nl": "Kleur 1" } },
+          { "name": "color2", "type": "color", "title": { "en": "Color 2", "de": "Farbe 2", "nl": "Kleur 2" } }
+        ]
+      },
+      {
+        "id": "show_test_pattern",
+        "title": { "en": "Show test pattern", "de": "Test-Muster zeigen", "nl": "Toon testpatroon" },
+        "titleFormatted": {
+          "en": "Show test pattern (checkerboard + corner markers)",
+          "de": "Test-Muster zeigen (Schachbrett + Eckmarker)",
+          "nl": "Toon testpatroon (schaakbord + hoekmarkeringen)"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
+        "id": "flash",
+        "title": { "en": "Flash", "de": "Blitzen", "nl": "Flash" },
+        "titleFormatted": {
+          "en": "Flash [[color]] [[times]]x ([[on_ms]]ms on, [[off_ms]]ms off)",
+          "de": "[[color]] [[times]]x blitzen ([[on_ms]]ms an, [[off_ms]]ms aus)",
+          "nl": "Flash [[color]] [[times]]x ([[on_ms]]ms aan, [[off_ms]]ms uit)"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          { "name": "times", "type": "number", "title": { "en": "Times", "de": "Anzahl", "nl": "Aantal" }, "min": 1, "max": 50, "step": 1, "value": 5 },
+          { "name": "on_ms", "type": "number", "title": { "en": "On (ms)", "de": "An (ms)", "nl": "Aan (ms)" }, "min": 50, "max": 2000, "step": 10, "value": 150 },
+          { "name": "off_ms", "type": "number", "title": { "en": "Off (ms)", "de": "Aus (ms)", "nl": "Uit (ms)" }, "min": 50, "max": 2000, "step": 10, "value": 150 }
+        ]
+      },
+      {
+        "id": "show_word_clock",
+        "title": { "en": "Show word-clock time", "de": "Wort-Uhrzeit anzeigen", "nl": "Toon woord-tijd" },
+        "titleFormatted": {
+          "en": "Show word-clock in [[locale]] color [[color]] mode [[mode]] mirror [[mirror]]",
+          "de": "Wort-Uhrzeit in [[locale]] anzeigen Farbe [[color]] Modus [[mode]] gespiegelt [[mirror]]",
+          "nl": "Toon woord-tijd in [[locale]] kleur [[color]] modus [[mode]] gespiegeld [[mirror]]"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          {
+            "name": "locale", "type": "dropdown",
+            "title": { "en": "Language", "de": "Sprache", "nl": "Taal" },
+            "values": [
+              { "id": "en", "label": { "en": "English", "de": "Englisch", "nl": "Engels" } },
+              { "id": "de", "label": { "en": "German", "de": "Deutsch", "nl": "Duits" } },
+              { "id": "nl", "label": { "en": "Dutch", "de": "Niederländisch", "nl": "Nederlands" } }
+            ]
+          },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          {
+            "name": "mode", "type": "dropdown",
+            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
+            "values": [
+              { "id": "0", "label": { "en": "Replace", "de": "Ersetzen", "nl": "Vervangen" } },
+              { "id": "1", "label": { "en": "Marquee", "de": "Laufschrift", "nl": "Lopende tekst" } },
+              { "id": "2", "label": { "en": "Reverse marquee", "de": "Rückwärts", "nl": "Omgekeerd" } }
+            ]
+          },
+          { "name": "mirror", "type": "checkbox", "title": { "en": "Mirror", "de": "Spiegeln", "nl": "Spiegelen" }, "value": false }
+        ]
+      },
+      {
+        "id": "show_weather",
+        "title": { "en": "Show weather (open-meteo)", "de": "Wetter anzeigen (open-meteo)", "nl": "Toon weer (open-meteo)" },
+        "titleFormatted": {
+          "en": "Show weather at [[latitude]],[[longitude]] in [[units]] color [[color]] mirror [[mirror]]",
+          "de": "Wetter an [[latitude]],[[longitude]] in [[units]] Farbe [[color]] gespiegelt [[mirror]] anzeigen",
+          "nl": "Toon weer op [[latitude]],[[longitude]] in [[units]] kleur [[color]] gespiegeld [[mirror]]"
+        },
+        "hint": {
+          "en": "Fetches current temperature from open-meteo.com (free, no API key required) for the given coordinates.",
+          "de": "Holt die aktuelle Temperatur von open-meteo.com (kostenlos, kein API-Key) für die angegebenen Koordinaten.",
+          "nl": "Haalt de huidige temperatuur op van open-meteo.com (gratis, geen API-key) voor de opgegeven coördinaten."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "latitude", "type": "number", "title": { "en": "Latitude", "de": "Breitengrad", "nl": "Breedtegraad" }, "min": -90, "max": 90, "step": 0.0001, "value": 52.5 },
+          { "name": "longitude", "type": "number", "title": { "en": "Longitude", "de": "Längengrad", "nl": "Lengtegraad" }, "min": -180, "max": 180, "step": 0.0001, "value": 13.4 },
+          {
+            "name": "units", "type": "dropdown", "title": { "en": "Units", "de": "Einheiten", "nl": "Eenheden" },
+            "values": [
+              { "id": "celsius", "label": { "en": "°C", "de": "°C", "nl": "°C" } },
+              { "id": "fahrenheit", "label": { "en": "°F", "de": "°F", "nl": "°F" } }
+            ]
+          },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          { "name": "mirror", "type": "checkbox", "title": { "en": "Mirror", "de": "Spiegeln", "nl": "Spiegelen" }, "value": false }
+        ]
+      },
+      {
         "id": "show_text",
         "title": { "en": "Show text", "de": "Text anzeigen", "nl": "Tekst tonen" },
         "titleFormatted": {
-          "en": "Show text [[text]] in [[color]] mode [[mode]] speed [[speed]] mirror [[mirror]]",
-          "de": "Text [[text]] in [[color]] Modus [[mode]] Geschwindigkeit [[speed]] gespiegelt [[mirror]] anzeigen",
-          "nl": "Toon tekst [[text]] in [[color]] modus [[mode]] snelheid [[speed]] gespiegeld [[mirror]]"
+          "en": "Show text [[text]] in [[color]] ([[color_mode]]) mode [[mode]] speed [[speed]] mirror [[mirror]]",
+          "de": "Text [[text]] in [[color]] ([[color_mode]]) Modus [[mode]] Geschwindigkeit [[speed]] gespiegelt [[mirror]] anzeigen",
+          "nl": "Toon tekst [[text]] in [[color]] ([[color_mode]]) modus [[mode]] snelheid [[speed]] gespiegeld [[mirror]]"
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
           { "name": "text", "type": "text", "title": { "en": "Text", "de": "Text", "nl": "Tekst" } },
           { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          {
+            "name": "color_mode", "type": "dropdown",
+            "title": { "en": "Color mode", "de": "Farb-Modus", "nl": "Kleurmodus" },
+            "values": [
+              { "id": "1", "label": { "en": "Solid color", "de": "Einfarbig", "nl": "Effen kleur" } },
+              { "id": "0", "label": { "en": "White (ignore color)", "de": "Weiß (Farbe ignorieren)", "nl": "Wit" } },
+              { "id": "2", "label": { "en": "Rainbow 1", "de": "Regenbogen 1", "nl": "Regenboog 1" } },
+              { "id": "3", "label": { "en": "Rainbow 2", "de": "Regenbogen 2", "nl": "Regenboog 2" } },
+              { "id": "4", "label": { "en": "Rainbow 3", "de": "Regenbogen 3", "nl": "Regenboog 3" } },
+              { "id": "5", "label": { "en": "Rainbow 4", "de": "Regenbogen 4", "nl": "Regenboog 4" } }
+            ]
+          },
           {
             "name": "mode", "type": "dropdown",
             "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },

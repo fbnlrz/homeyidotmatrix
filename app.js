@@ -88,6 +88,50 @@ class IDMApp extends Homey.App {
         mode: parseInt(args.mode, 10),
         speed: parseInt(args.speed, 10),
         mirror: !!args.mirror,
+        colorMode: parseInt(args.color_mode, 10),
+      });
+    });
+
+    fire('show_solid_color', async args => {
+      await args.device.showSolidColor(args.color);
+    });
+
+    fire('show_effect', async args => {
+      await args.device.showEffect(
+        parseInt(args.style, 10),
+        [_parseFlowColor(args.color1), _parseFlowColor(args.color2)],
+      );
+    });
+
+    fire('show_test_pattern', async args => {
+      await args.device.showTestPattern();
+    });
+
+    fire('flash', async args => {
+      await args.device.flash({
+        color: args.color,
+        times: parseInt(args.times, 10),
+        onMs: parseInt(args.on_ms, 10),
+        offMs: parseInt(args.off_ms, 10),
+      });
+    });
+
+    fire('show_word_clock', async args => {
+      await args.device.showWordClock({
+        locale: args.locale,
+        color: args.color,
+        mode: parseInt(args.mode, 10),
+        mirror: !!args.mirror,
+      });
+    });
+
+    fire('show_weather', async args => {
+      await args.device.showWeather({
+        latitude: parseFloat(args.latitude),
+        longitude: parseFloat(args.longitude),
+        units: args.units,
+        color: args.color,
+        mirror: !!args.mirror,
       });
     });
 
@@ -338,6 +382,18 @@ class IDMApp extends Homey.App {
     }
     log(`BLE upload done in ${Date.now() - tBle}ms total ${Date.now() - t0}ms`);
   }
+}
+
+function _parseFlowColor(input) {
+  if (!input) return [255, 255, 255];
+  let hex = String(input).replace(/^#/, '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  if (hex.length !== 6) return [255, 255, 255];
+  return [
+    parseInt(hex.slice(0, 2), 16),
+    parseInt(hex.slice(2, 4), 16),
+    parseInt(hex.slice(4, 6), 16),
+  ];
 }
 
 function _formatValue(value, decimals) {
