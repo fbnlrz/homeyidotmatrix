@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>iDotMatrix</title>
+  <link href="/homey.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 18px; max-width: 920px; }
+    h2 { margin-top: 28px; color: #ff3366; }
+    section { background: #fff; border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .dropzone {
+      border: 2px dashed #ccc; border-radius: 10px; padding: 28px; text-align: center;
+      color: #888; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .dropzone.over { border-color: #ff3366; background: #ffeef3; color: #444; }
+    .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; }
+    .file { border: 1px solid #eee; border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; word-break: break-all; }
+    .file img { width: 96px; height: 96px; object-fit: contain; image-rendering: pixelated; background: #111; border-radius: 4px; display: block; margin: 0 auto 6px; }
+    .file .name { font-weight: 500; margin-bottom: 4px; }
+    .file button { font-size: 11px; padding: 2px 6px; margin-top: 4px; cursor: pointer; }
+    .grid-wrap { display: inline-block; border: 1px solid #ddd; padding: 4px; background: #111; margin-top: 12px; }
+    #grid { display: grid; gap: 1px; background: #333; }
+    .cell { width: 12px; height: 12px; background: #000; cursor: crosshair; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .toolbar input[type=text] { padding: 4px 6px; }
+    .toolbar button { padding: 6px 12px; cursor: pointer; }
+    .msg { padding: 8px; border-radius: 6px; margin: 8px 0; font-size: 13px; display: none; }
+    .msg.ok { background: #e9f7ec; color: #1b6f2c; display: block; }
+    .msg.err { background: #fdecec; color: #8a1f1f; display: block; }
+    select, input[type=color], input[type=number] { padding: 4px 6px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 10px 0; }
+    .preview-grid button { padding: 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+    .preview-grid button:hover { border-color: #ff3366; }
+    .preview-grid .color-chip { height: 28px; border-radius: 4px; margin-bottom: 4px; }
+    .symbol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; margin: 10px 0; }
+    .symbol-grid button { padding: 8px; font-size: 18px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
+    .symbol-grid button:hover { border-color: #ff3366; }
+    h3 { font-size: 14px; margin: 14px 0 6px; color: #555; }
+    .activity-row { padding: 4px 0; border-bottom: 1px solid #eee; }
+    .activity-row .when { color: #888; margin-right: 8px; }
+  </style>
+</head>
+<body>
+
+  <h1>iDotMatrix</h1>
+  <p>
+    Manage uploaded images and draw your own pixel art.
+    Files saved here are available in the <strong>Show stored image</strong> Flow card.
+  </p>
+
+  <section>
+    <h2>Upload</h2>
+    <div id="dropzone" class="dropzone">
+      Drop PNG / JPG / GIF here, or click to pick<br/>
+      <small>Max 5 MB per file</small>
+    </div>
+    <input type="file" id="filepicker" multiple accept="image/png,image/jpeg,image/gif,image/bmp,image/webp" style="display:none"/>
+    <div id="msg-upload" class="msg"></div>
+  </section>
+
+  <section>
+    <h2>Previews</h2>
+    <p>Click any item to immediately send it to every paired display.</p>
+    <h3>Animations</h3>
+    <div id="anim-grid" class="preview-grid"></div>
+    <h3>Built-in effects</h3>
+    <div id="effect-grid" class="preview-grid"></div>
+    <h3>Color presets</h3>
+    <div id="color-grid" class="preview-grid"></div>
+    <h3>Symbol palette</h3>
+    <p>Click a symbol to copy it to the clipboard — paste into any text Flow card.</p>
+    <div id="symbol-grid" class="symbol-grid"></div>
+    <div id="msg-preview" class="msg"></div>
+  </section>
+
+  <section>
+    <h2>Recent activity</h2>
+    <button id="activity-refresh">Refresh</button>
+    <div id="activity-log" style="font-size:12px; margin-top:8px;"></div>
+  </section>
+
+  <section>
+    <h2>Signal strength (RSSI)</h2>
+    <button id="rssi-refresh">Refresh</button>
+    <canvas id="rssi-canvas" width="900" height="180" style="width:100%; max-width:900px; background:#fafafa; border:1px solid #eee; border-radius:8px; margin-top:8px;"></canvas>
+    <div id="rssi-info" style="font-size:12px; color:#666; margin-top:4px;"></div>
+  </section>
+
+  <section>
+    <h2>Diagnostics</h2>
+    <div class="toolbar">
+      <button id="speed-test">Run BLE speed test</button>
+      <button id="smoke-test">Run smoke test (cycles cards)</button>
+    </div>
+    <div id="diag-result" style="font-size:12px; margin-top:8px; white-space:pre-wrap; font-family:monospace;"></div>
+  </section>
+
+  <section>
+    <h2>Flow card statistics</h2>
+    <button id="stats-refresh">Refresh</button>
+    <div id="stats-table" style="font-size:12px; margin-top:8px;"></div>
+  </section>
+
+  <section>
+    <h2>Built-in font preview</h2>
+    <p>All glyphs in the 5×7 ASCII font this app ships with.</p>
+    <canvas id="font-canvas" width="600" height="320" style="background:#111; border-radius:8px;"></canvas>
+  </section>
+
+  <section>
+    <h2>Library</h2>
+    <button id="refresh">Refresh</button>
+    <div id="files" class="files"></div>
+  </section>
+
+  <section>
+    <h2>Pixel art editor</h2>
+    <div class="toolbar">
+      <label>Size <select id="ed-size">
+        <option value="16">16×16</option>
+        <option value="32" selected>32×32</option>
+        <option value="64">64×64</option>
+      </select></label>
+      <label>Color <input type="color" id="ed-color" value="#ff3366"/></label>
+      <button id="ed-fill">Fill</button>
+      <button id="ed-clear">Clear</button>
+      <input type="text" id="ed-name" placeholder="pixel-art.png" size="20"/>
+      <button id="ed-save">Save to library</button>
+      <button id="ed-preview">Preview on display</button>
+    </div>
+    <small>Left-click to paint. Shift+click to erase.</small>
+    <div class="grid-wrap"><div id="grid"></div></div>
+    <div id="msg-editor" class="msg"></div>
+  </section>
+
+  <script type="text/javascript">
+
+    function onHomeyReady(Homey) {
+      // Always remove the spinner first — even if our init code throws.
+      try { Homey.ready(); } catch (e) { console.error('Homey.ready failed', e); }
+      window._homey = Homey;
+      const safe = (label, fn) => {
+        try { fn(); } catch (e) { console.error('[settings init]', label, e); }
+      };
+      safe('activity refresh button', () => {
+        const el = document.getElementById('activity-refresh');
+        if (el) el.addEventListener('click', refreshActivity);
+      });
+
+      function showMsg(id, text, ok) {
+        const el = document.getElementById(id);
+        el.className = 'msg ' + (ok ? 'ok' : 'err');
+        el.textContent = text;
+      }
+      function showError(e, id) { showMsg(id || 'msg-upload', (e && e.message) || String(e), false); }
+
+      function refresh() {
+        Homey.api('GET', '/media?withData=1').then(items => {
+          const root = document.getElementById('files');
+          root.innerHTML = '';
+          if (!items.length) {
+            root.innerHTML = '<p style="grid-column:1/-1;color:#888">No files yet — drop one above or save your pixel art below.</p>';
+            return;
+          }
+          for (const it of items) {
+            const div = document.createElement('div');
+            div.className = 'file';
+            const thumb = it.dataUrl ? '<img src="' + it.dataUrl + '" alt="">' : '';
+            div.innerHTML =
+              thumb +
+              '<div class="name">' + it.name + '</div>' +
+              '<small>' + (it.size / 1024).toFixed(1) + ' KB</small><br/>' +
+              '<button data-name="' + it.name + '" class="del">delete</button>';
+            root.appendChild(div);
+          }
+          root.querySelectorAll('.del').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              if (!confirm('Delete ' + btn.dataset.name + '?')) return;
+              try {
+                await Homey.api('DELETE', '/media/' + encodeURIComponent(btn.dataset.name));
+                refresh();
+              } catch (e) { showError(e); }
+            });
+          });
+        }).catch(showError);
+      }
+      document.getElementById('refresh').addEventListener('click', refresh);
+
+      const dz = document.getElementById('dropzone');
+      const fp = document.getElementById('filepicker');
+      dz.addEventListener('click', () => fp.click());
+      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, () => dz.classList.remove('over')));
+      dz.addEventListener('drop', e => { e.preventDefault(); uploadAll(Array.from(e.dataTransfer.files)); });
+      fp.addEventListener('change', () => uploadAll(Array.from(fp.files)));
+
+      async function uploadAll(files) {
+        for (const f of files) {
+          try {
+            if (f.size > 5 * 1024 * 1024) throw new Error(f.name + ': too large');
+            const buf = await f.arrayBuffer();
+            await uploadBuffer(f.name, new Uint8Array(buf));
+            showMsg('msg-upload', 'uploaded ' + f.name, true);
+          } catch (e) { showError(e); }
+        }
+        refresh();
+      }
+
+      function uploadBuffer(name, bytes) {
+        return Homey.api('POST', '/media/' + encodeURIComponent(name), {
+          type: 'Buffer',
+          data: Array.from(bytes),
+        });
+      }
+
+      // ---- pixel-art editor ----
+      const grid = document.getElementById('grid');
+      let gridSize = 32;
+      let cells = [];
+      let mouseDown = false;
+      document.addEventListener('mousedown', () => mouseDown = true);
+      document.addEventListener('mouseup',   () => mouseDown = false);
+
+      function buildGrid(size) {
+        gridSize = size;
+        grid.style.gridTemplateColumns = 'repeat(' + size + ', 12px)';
+        grid.innerHTML = '';
+        cells = Array.from({ length: size }, () => Array(size).fill('#000000'));
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const c = document.createElement('div');
+            c.className = 'cell';
+            c.dataset.x = x;
+            c.dataset.y = y;
+            c.addEventListener('mousedown', paint);
+            c.addEventListener('mouseover', e => { if (mouseDown) paint(e); });
+            grid.appendChild(c);
+          }
+        }
+      }
+      function paint(e) {
+        const x = +e.target.dataset.x;
+        const y = +e.target.dataset.y;
+        const color = e.shiftKey ? '#000000' : document.getElementById('ed-color').value;
+        cells[y][x] = color;
+        e.target.style.background = color;
+      }
+      function fillAll(color) {
+        for (let y = 0; y < gridSize; y++)
+          for (let x = 0; x < gridSize; x++)
+            cells[y][x] = color;
+        document.querySelectorAll('.cell').forEach(c => c.style.background = color);
+      }
+      document.getElementById('ed-size').addEventListener('change', e => buildGrid(+e.target.value));
+      document.getElementById('ed-clear').addEventListener('click', () => fillAll('#000000'));
+      document.getElementById('ed-fill').addEventListener('click', () => fillAll(document.getElementById('ed-color').value));
+
+      function exportPng() {
+        const canvas = document.createElement('canvas');
+        canvas.width = gridSize;
+        canvas.height = gridSize;
+        const ctx = canvas.getContext('2d');
+        for (let y = 0; y < gridSize; y++)
+          for (let x = 0; x < gridSize; x++) {
+            ctx.fillStyle = cells[y][x];
+            ctx.fillRect(x, y, 1, 1);
+          }
+        return new Promise(resolve => canvas.toBlob(b => b.arrayBuffer().then(buf => resolve(new Uint8Array(buf))), 'image/png'));
+      }
+
+      document.getElementById('ed-save').addEventListener('click', async () => {
+        const raw = (document.getElementById('ed-name').value || ('pixel-art-' + Date.now() + '.png')).trim();
+        const name = raw.endsWith('.png') ? raw : raw + '.png';
+        try {
+          const bytes = await exportPng();
+          await uploadBuffer(name, bytes);
+          showMsg('msg-editor', 'saved as ' + name, true);
+          refresh();
+        } catch (e) { showError(e, 'msg-editor'); }
+      });
+
+      document.getElementById('ed-preview').addEventListener('click', async () => {
+        try {
+          const bytes = await exportPng();
+          await Homey.api('POST', '/preview-pixel-art', {
+            type: 'Buffer',
+            data: Array.from(bytes),
+          });
+          showMsg('msg-editor', 'sent to display', true);
+        } catch (e) { showError(e, 'msg-editor'); }
+      });
+
+      safe('pixel grid', () => buildGrid(32));
+      safe('file list', () => refresh());
+      safe('preview tiles', () => buildPreviews());
+      safe('activity log', () => refreshActivity());
+      safe('rssi graph', () => refreshRssi());
+      safe('flow stats', () => refreshStats());
+      safe('font preview', () => drawFontPreview());
+      safe('diagnostic buttons', () => {
+        const sp = document.getElementById('speed-test');
+        if (sp) sp.addEventListener('click', runSpeedTest);
+        const sm = document.getElementById('smoke-test');
+        if (sm) sm.addEventListener('click', runSmokeTest);
+        const rr = document.getElementById('rssi-refresh');
+        if (rr) rr.addEventListener('click', refreshRssi);
+        const sr = document.getElementById('stats-refresh');
+        if (sr) sr.addEventListener('click', refreshStats);
+      });
+    }
+
+    function refreshRssi() {
+      const Homey = window._homey;
+      Homey.api('GET', '/rssi-history').then(devices => {
+        const canvas = document.getElementById('rssi-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const info = document.getElementById('rssi-info');
+        const dev = devices[0];
+        if (!dev || !dev.samples.length) {
+          info.textContent = 'No RSSI samples yet — wait 30 s while connected and refresh.';
+          return;
+        }
+        const samples = dev.samples;
+        const minR = Math.min(...samples.map(s => s.rssi)) - 5;
+        const maxR = Math.max(...samples.map(s => s.rssi)) + 5;
+        const w = canvas.width, h = canvas.height;
+        // Y-axis gridlines every 10 dBm
+        ctx.strokeStyle = '#eee'; ctx.lineWidth = 1;
+        for (let r = Math.ceil(minR / 10) * 10; r <= maxR; r += 10) {
+          const y = h - ((r - minR) / (maxR - minR)) * (h - 20) - 10;
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+          ctx.fillStyle = '#999'; ctx.font = '10px monospace';
+          ctx.fillText(r + ' dBm', 4, y - 2);
+        }
+        // Line
+        ctx.strokeStyle = '#ff3366'; ctx.lineWidth = 2; ctx.beginPath();
+        samples.forEach((s, i) => {
+          const x = (i / Math.max(1, samples.length - 1)) * w;
+          const y = h - ((s.rssi - minR) / (maxR - minR)) * (h - 20) - 10;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        info.textContent = `${dev.name}: ${samples.length} samples, last = ${samples[samples.length - 1].rssi} dBm, range ${minR + 5}..${maxR - 5}`;
+      }).catch(e => { document.getElementById('rssi-info').textContent = 'error: ' + e.message; });
+    }
+
+    function refreshStats() {
+      const Homey = window._homey;
+      Homey.api('GET', '/flow-stats').then(rows => {
+        const root = document.getElementById('stats-table');
+        if (!rows.length) { root.innerHTML = '<p style="color:#888">No Flow runs yet.</p>'; return; }
+        const html = ['<table style="width:100%; border-collapse:collapse;"><tr><th style="text-align:left">Card</th><th>Runs</th><th>Errors</th><th>Last run</th></tr>'];
+        for (const r of rows) {
+          const ts = r.lastRunAt ? new Date(r.lastRunAt).toLocaleTimeString() : '—';
+          html.push('<tr style="border-top:1px solid #eee"><td>' + r.id + '</td><td style="text-align:center">' + r.runs + '</td><td style="text-align:center; color:' + (r.errors ? '#c00' : '#999') + '">' + r.errors + '</td><td>' + ts + '</td></tr>');
+        }
+        html.push('</table>');
+        root.innerHTML = html.join('');
+      }).catch(e => { document.getElementById('stats-table').innerHTML = '<span style="color:#c00">' + e.message + '</span>'; });
+    }
+
+    function runSpeedTest() {
+      const out = document.getElementById('diag-result');
+      out.textContent = 'Running speed test (~4 KB BLE write)…';
+      const Homey = window._homey;
+      Homey.api('POST', '/speed-test').then(results => {
+        out.textContent = 'BLE speed test results:\n' + results.map(r =>
+          r.error ? `  ${r.name}: ERROR ${r.error}`
+            : `  ${r.name}: ${r.bytes} B in ${r.ms} ms = ${r.bytesPerSecond} B/s (${r.kbps} kbps)`
+        ).join('\n');
+      }).catch(e => { out.textContent = 'error: ' + e.message; });
+    }
+
+    function runSmokeTest() {
+      const out = document.getElementById('diag-result');
+      out.textContent = 'Running smoke test (5 cards on first device, ~3 s)…';
+      const Homey = window._homey;
+      Homey.api('POST', '/smoke-test').then(result => {
+        out.textContent = 'Smoke test on ' + result.device + ':\n' + result.steps.map(s =>
+          (s.ok ? '  ✓ ' : '  ✗ ') + s.name + ' (' + s.ms + ' ms)' + (s.error ? ' — ' + s.error : '')
+        ).join('\n');
+      }).catch(e => { out.textContent = 'error: ' + e.message; });
+    }
+
+    function drawFontPreview() {
+      const Homey = window._homey;
+      Homey.api('GET', '/font-glyphs').then(glyphs => {
+        const canvas = document.getElementById('font-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ff3366';
+        const keys = Object.keys(glyphs).sort();
+        const cellW = 50, cellH = 50;
+        const cols = Math.floor(canvas.width / cellW);
+        keys.forEach((ch, i) => {
+          const col = i % cols, row = Math.floor(i / cols);
+          const x0 = col * cellW + 8, y0 = row * cellH + 8;
+          const rows = glyphs[ch];
+          // 16 rows × 8 bits, 3px per pixel
+          for (let r = 0; r < Math.min(rows.length, 12); r++) {
+            for (let c = 0; c < 8; c++) {
+              if ((rows[r] >> (7 - c)) & 1) {
+                ctx.fillRect(x0 + c * 3, y0 + r * 3, 3, 3);
+              }
+            }
+          }
+          ctx.fillStyle = '#666'; ctx.font = '10px monospace';
+          ctx.fillText(ch, x0, y0 + 48);
+          ctx.fillStyle = '#ff3366';
+        });
+      }).catch(() => {});
+    }
+
+    function buildPreviews() {
+      const ANIMS = [
+        ['matrixRain', 'Matrix rain'],
+        ['gameOfLife', 'Game of Life'],
+        ['dvdBouncer', 'DVD bouncer'],
+        ['plasma', 'Plasma'],
+        ['starfield', 'Starfield'],
+        ['fireworks', 'Fireworks'],
+      ];
+      const EFFECTS = [
+        ['0', 'Horizontal rainbow'],
+        ['1', 'Random color pixels'],
+        ['2', 'Random white on color'],
+        ['3', 'Vertical rainbow'],
+        ['4', 'Diagonal rainbow ↗'],
+        ['5', 'Diagonal rainbow ↘'],
+        ['6', 'Random colored pixels'],
+      ];
+      const COLORS = [
+        ['#ff0000', 'Red'], ['#00ff00', 'Green'], ['#0000ff', 'Blue'],
+        ['#ffaa00', 'Orange'], ['#ff00ff', 'Magenta'], ['#00ffff', 'Cyan'],
+        ['#ffffff', 'White'], ['#ff3366', 'Brand'], ['#ffdd00', 'Yellow'],
+        ['#88ff00', 'Lime'], ['#9933ff', 'Purple'], ['#000000', 'Black'],
+      ];
+      const SYMBOLS = ['°', '★', '♥', '☀', '☁', '☂', '☃', '☎', '✓', '✗', '→', '←', '↑', '↓', '⏰', '€', '£', '¥', '!', '?', '#', '+', '-', '*'];
+
+      const a = document.getElementById('anim-grid');
+      a.innerHTML = '';
+      ANIMS.forEach(([id, label]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.addEventListener('click', () => preview('POST', '/preview-animation/' + id));
+        a.appendChild(b);
+      });
+
+      const e = document.getElementById('effect-grid');
+      e.innerHTML = '';
+      EFFECTS.forEach(([id, label]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.addEventListener('click', () => preview('POST', '/preview-effect/' + id));
+        e.appendChild(b);
+      });
+
+      const c = document.getElementById('color-grid');
+      c.innerHTML = '';
+      COLORS.forEach(([hex, label]) => {
+        const b = document.createElement('button');
+        const chip = document.createElement('div');
+        chip.className = 'color-chip';
+        chip.style.background = hex;
+        b.appendChild(chip);
+        b.appendChild(document.createTextNode(label));
+        b.addEventListener('click', () => preview('POST', '/preview-solid-color', { color: hex }));
+        c.appendChild(b);
+      });
+
+      const s = document.getElementById('symbol-grid');
+      s.innerHTML = '';
+      SYMBOLS.forEach(sym => {
+        const b = document.createElement('button');
+        b.textContent = sym;
+        b.title = 'click to copy';
+        b.addEventListener('click', () => {
+          navigator.clipboard.writeText(sym).then(() => {
+            document.getElementById('msg-preview').className = 'msg ok';
+            document.getElementById('msg-preview').textContent = 'copied: ' + sym;
+          });
+        });
+        s.appendChild(b);
+      });
+    }
+
+    function preview(method, path, body) {
+      const Homey = window._homey;
+      Homey.api(method, path, body).then(() => {
+        const el = document.getElementById('msg-preview');
+        el.className = 'msg ok';
+        el.textContent = 'sent to display';
+      }).catch(err => {
+        const el = document.getElementById('msg-preview');
+        el.className = 'msg err';
+        el.textContent = err.message || String(err);
+      });
+    }
+
+    function refreshActivity() {
+      const Homey = window._homey;
+      Homey.api('GET', '/activity').then(items => {
+        const root = document.getElementById('activity-log');
+        if (!items.length) {
+          root.innerHTML = '<p style="color:#888">No activity yet.</p>';
+          return;
+        }
+        root.innerHTML = items.map(it => {
+          const when = new Date(it.ts).toLocaleTimeString();
+          const what = it.type + (it.text ? ': ' + it.text : '') + (it.name ? ': ' + it.name : '') + (it.percent !== undefined ? ': ' + it.percent + '%' : '');
+          return '<div class="activity-row"><span class="when">' + when + '</span>' + (it.device || '') + ' — ' + what + '</div>';
+        }).join('');
+      }).catch(() => {});
+    }
+  </script>
+</body>
+</html>
