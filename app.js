@@ -387,7 +387,7 @@ class IDMApp extends Homey.App {
     });
 
     fire('test_ae_key', async args => {
-      await args.device.testAeKey(args.key_hex);
+      await args.device.testAeKey(args.key_hex, args.iv);
     });
 
     fire('probe_capabilities', async args => {

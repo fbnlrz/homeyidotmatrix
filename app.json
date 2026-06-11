@@ -1055,18 +1055,19 @@
           "nl": "Test kandidaat-AE-sleutel (uit APK)"
         },
         "titleFormatted": {
-          "en": "Test AE key [[key_hex]]",
-          "de": "AE-Key [[key_hex]] testen",
-          "nl": "Test AE-sleutel [[key_hex]]"
+          "en": "Test AE key [[key_hex]] with IV [[iv]]",
+          "de": "AE-Key [[key_hex]] mit IV [[iv]] testen",
+          "nl": "Test AE-sleutel [[key_hex]] met IV [[iv]]"
         },
         "hint": {
-          "en": "Paste a 16-byte (32 hex char) candidate key extracted from the iDotMatrix Android APK. The card tries AES-ECB, AES-CBC zero-IV, AES-CMAC and HMAC-SHA256-trunc16 against four small inputs and reports whether any mode's output matches the device's response — that's how we know the key + cipher mode are correct.",
-          "de": "16-Byte Kandidaten-Key (32 Hex-Zeichen) aus der iDotMatrix-APK einfügen. Die Karte testet AES-ECB, AES-CBC mit Null-IV, AES-CMAC und HMAC-SHA256-trunc16 gegen vier kleine Inputs und meldet ob eine Mode-Antwort mit der Device-Antwort übereinstimmt.",
-          "nl": "Plak een 16-byte (32 hex-tekens) kandidaat-sleutel uit de iDotMatrix-APK. De kaart probeert AES-ECB, AES-CBC nul-IV, AES-CMAC en HMAC-SHA256-trunc16 tegen vier kleine inputs en meldt of een mode-output overeenkomt met het apparaat-antwoord."
+          "en": "Paste a candidate key (AES-128/192/256). Accepts ASCII strings (e.g. \"Jy47rzJAgKMfrcc92PamyyukQqB7wmFu\") or hex (32/48/64 chars). Optional IV field accepts ASCII (e.g. \"0000000000000000\") or 32 hex chars. The card tries AES-ECB, AES-CBC encrypt+decrypt with 6 IV variants (zero, ascii-zeros, ones, key-prefix, input-padded, captured-nonce, custom), plus HMAC-SHA256-trunc16 and reports which (if any) match the device's response.",
+          "de": "Kandidaten-Key einfügen (AES-128/192/256). ASCII (z.B. \"Jy47rzJAgKMfrcc92PamyyukQqB7wmFu\") oder Hex (32/48/64 Zeichen). Optionales IV-Feld akzeptiert ASCII (z.B. \"0000000000000000\") oder 32 Hex-Zeichen. Karte testet AES-ECB, AES-CBC Encrypt+Decrypt mit 6 IV-Varianten plus HMAC-SHA256.",
+          "nl": "Plak een kandidaat-sleutel (AES-128/192/256). ASCII of hex. Optioneel IV-veld. Kaart probeert AES-ECB, AES-CBC encrypt+decrypt met 6 IV-varianten plus HMAC-SHA256."
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
-          { "name": "key_hex", "type": "text", "title": { "en": "Key (32 hex chars)", "de": "Key (32 Hex-Zeichen)", "nl": "Sleutel (32 hex-tekens)" }, "placeholder": { "en": "0123456789abcdef0123456789abcdef" } }
+          { "name": "key_hex", "type": "text", "title": { "en": "Key (ASCII or hex)", "de": "Key (ASCII oder Hex)", "nl": "Sleutel (ASCII of hex)" }, "placeholder": { "en": "Jy47rzJAg... or 4a79343...", "de": "Jy47rzJAg... oder 4a79343...", "nl": "Jy47rzJAg... of 4a79343..." } },
+          { "name": "iv", "type": "text", "title": { "en": "IV (optional)", "de": "IV (optional)", "nl": "IV (optioneel)" }, "placeholder": { "en": "0000000000000000 or 32 hex", "de": "0000000000000000 oder 32 Hex", "nl": "0000000000000000 of 32 hex" } }
         ]
       },
       {

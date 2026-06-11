@@ -426,9 +426,9 @@ class IDMDevice extends Homey.Device {
    * a few small fixed inputs. If any match the device's response, the AE
    * auth is cracked.
    */
-  async testAeKey(keyHex) {
+  async testAeKey(keyHex, ivHex) {
     if (!this.client.isConnected()) await this.client.connect();
-    const result = await IDMProbe.testAeKey(this.client, keyHex, {
+    const result = await IDMProbe.testAeKey(this.client, keyHex, ivHex, {
       onLog: (...a) => this.log('[ae-key]', ...a),
     });
     const json = JSON.stringify(result, null, 2);
