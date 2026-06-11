@@ -420,6 +420,22 @@ class IDMDevice extends Homey.Device {
     return result;
   }
 
+  /** Stage-4 AE probe: determinism + structural patterns + avalanche test (~25 s run). */
+  async probeAeDeterminism() {
+    if (!this.client.isConnected()) await this.client.connect();
+    const result = await IDMProbe.probeAeDeterminism(this.client, {
+      onLog: (...a) => this.log('[ae-det]', ...a),
+    });
+    const json = JSON.stringify(result, null, 2);
+    this.log(`AE determinism done: ${result.determinism.map(d => d.input + '→' + d.verdict).join(', ')}`);
+    try {
+      await this.setSettings({ ae_probe_result: json });
+    } catch (e) {
+      this.log('Failed to persist AE determinism result:', e.message);
+    }
+    return result;
+  }
+
   /** Stage-3 AE probe: pool size + 1B/2B input mapping + handshake followups (~70 s run). */
   async probeAeMapping() {
     if (!this.client.isConnected()) await this.client.connect();

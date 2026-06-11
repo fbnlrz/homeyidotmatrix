@@ -1048,6 +1048,27 @@
         ]
       },
       {
+        "id": "probe_ae_determinism",
+        "title": {
+          "en": "0x00AE determinism + avalanche test (~25 s)",
+          "de": "0x00AE Determinismus + Avalanche-Test (~25 s)",
+          "nl": "0x00AE determinisme + avalanche-test (~25 s)"
+        },
+        "titleFormatted": {
+          "en": "Test 0x00AE response determinism + avalanche behavior on [[device]]",
+          "de": "0x00AE Antwort-Determinismus + Avalanche-Verhalten auf [[device]] testen",
+          "nl": "Test 0x00AE response-determinisme + avalanche-gedrag op [[device]]"
+        },
+        "hint": {
+          "en": "Stage 4 — sends 5 fixed inputs 8 times each to test whether the same input always produces the same output (pure function = keyed MAC) or varies (session-dependent). Plus structural patterns (all-zeros, all-ones, sequential) and an avalanche test (single-bit flips → output bit-distance). Tells us if it's likely AES-CMAC, HMAC, or something weaker.",
+          "de": "Stufe 4 — sendet 5 feste Inputs je 8-mal um zu testen, ob derselbe Input immer dieselbe Ausgabe erzeugt (reine Funktion = Keyed MAC) oder variiert (Session-abhängig). Plus strukturelle Patterns (Nullen, Einsen, sequenziell) und ein Avalanche-Test (Single-Bit-Flips → Output-Bit-Distanz).",
+          "nl": "Fase 4 — verstuurt 5 vaste inputs elk 8 keer om te testen of dezelfde input altijd dezelfde output produceert (pure functie = sleuteled MAC) of varieert. Plus structurele patronen en een avalanche-test."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
         "id": "probe_ae_mapping",
         "title": {
           "en": "Map 0x00AE response space (slow, ~70 s)",

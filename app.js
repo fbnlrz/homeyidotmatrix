@@ -382,6 +382,10 @@ class IDMApp extends Homey.App {
       await args.device.probeAeMapping();
     });
 
+    fire('probe_ae_determinism', async args => {
+      await args.device.probeAeDeterminism();
+    });
+
     fire('probe_capabilities', async args => {
       await args.device.probeCapabilities();
     });
