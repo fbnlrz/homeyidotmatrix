@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": ["local"],
@@ -177,6 +177,17 @@
                 "en": "Read-only JSON of the most recent capability probe.",
                 "de": "Nur-Lese-JSON des letzten Capability-Probe-Laufs.",
                 "nl": "Alleen-lezen JSON van de laatste capability-probe."
+              }
+            },
+            {
+              "id": "ae_probe_result",
+              "type": "textarea",
+              "label": { "en": "Last AE-service reverse-engineering result", "de": "Letztes AE-Service Reverse-Engineering-Ergebnis", "nl": "Laatste AE-service reverse-engineering resultaat" },
+              "value": "",
+              "hint": {
+                "en": "JSON of the most recent 0x00AE-service probe. Shows which fingerprint patterns the secondary BLE service responded to — useful for figuring out what it does (OTA updates? mesh control? device buttons?).",
+                "de": "JSON des letzten 0x00AE-Service-Probes. Zeigt, welche Fingerprint-Patterns der zweite BLE-Service beantwortet hat — hilft beim Reverse-Engineering (OTA-Updates? Mesh-Steuerung? Gerätetasten?).",
+                "nl": "JSON van de laatste 0x00AE-service probe. Toont welke fingerprint-patronen de secundaire BLE-service heeft beantwoord — handig voor reverse-engineering (OTA-updates? mesh-controle? apparaatknoppen?)."
               }
             }
           ]
@@ -400,9 +411,16 @@
               { "id": "matrixRain", "label": { "en": "Matrix rain", "de": "Matrix-Regen", "nl": "Matrix-regen" } },
               { "id": "gameOfLife", "label": { "en": "Game of Life", "de": "Game of Life", "nl": "Game of Life" } },
               { "id": "dvdBouncer", "label": { "en": "DVD bouncer", "de": "DVD-Bouncer", "nl": "DVD-bouncer" } },
-              { "id": "plasma", "label": { "en": "Plasma", "de": "Plasma", "nl": "Plasma" } },
+              { "id": "plasma", "label": { "en": "Plasma (rainbow)", "de": "Plasma (Regenbogen)", "nl": "Plasma (regenboog)" } },
+              { "id": "plasma:sunset", "label": { "en": "Plasma (sunset)", "de": "Plasma (Sonnenuntergang)", "nl": "Plasma (zonsondergang)" } },
+              { "id": "plasma:ocean", "label": { "en": "Plasma (ocean)", "de": "Plasma (Ozean)", "nl": "Plasma (oceaan)" } },
+              { "id": "plasma:fire", "label": { "en": "Plasma (fire)", "de": "Plasma (Feuer)", "nl": "Plasma (vuur)" } },
+              { "id": "plasma:forest", "label": { "en": "Plasma (forest)", "de": "Plasma (Wald)", "nl": "Plasma (bos)" } },
               { "id": "starfield", "label": { "en": "Starfield", "de": "Sternenfeld", "nl": "Sterrenveld" } },
-              { "id": "fireworks", "label": { "en": "Fireworks", "de": "Feuerwerk", "nl": "Vuurwerk" } }
+              { "id": "fireworks", "label": { "en": "Fireworks", "de": "Feuerwerk", "nl": "Vuurwerk" } },
+              { "id": "confetti", "label": { "en": "Confetti", "de": "Konfetti", "nl": "Confetti" } },
+              { "id": "snake", "label": { "en": "Snake (auto)", "de": "Snake (Auto)", "nl": "Snake (auto)" } },
+              { "id": "pong", "label": { "en": "Pong (auto)", "de": "Pong (Auto)", "nl": "Pong (auto)" } }
             ]
           }
         ]
@@ -589,6 +607,33 @@
           { "name": "label", "type": "text", "title": { "en": "Label", "de": "Bezeichnung", "nl": "Label" }, "placeholder": { "en": "e.g. Meeting" } },
           { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
           { "name": "mirror", "type": "checkbox", "title": { "en": "Mirror", "de": "Spiegeln", "nl": "Spiegelen" }, "value": false }
+        ]
+      },
+      {
+        "id": "show_day_counter",
+        "title": { "en": "Show day counter", "de": "Tage-Zähler anzeigen", "nl": "Toon dagteller" },
+        "titleFormatted": {
+          "en": "Show days [[mode]] [[target_iso]] in [[color]]",
+          "de": "Tage [[mode]] [[target_iso]] in [[color]] zeigen",
+          "nl": "Toon dagen [[mode]] [[target_iso]] in [[color]]"
+        },
+        "hint": {
+          "en": "Big-digit counter: days since a past event or days until a future one.",
+          "de": "Großer Zähler: Tage seit vergangenem Ereignis oder Tage bis zu einem zukünftigen.",
+          "nl": "Grote teller: dagen sinds een gebeurtenis of dagen tot een toekomstige."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "target_iso", "type": "text", "title": { "en": "Date (ISO)", "de": "Datum (ISO)", "nl": "Datum (ISO)" }, "placeholder": { "en": "2026-12-24" } },
+          {
+            "name": "mode", "type": "dropdown",
+            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
+            "values": [
+              { "id": "until", "label": { "en": "Days until", "de": "Tage bis", "nl": "Dagen tot" } },
+              { "id": "since", "label": { "en": "Days since", "de": "Tage seit", "nl": "Dagen sinds" } }
+            ]
+          },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } }
         ]
       },
       {
@@ -1000,6 +1045,27 @@
               { "id": "3", "label": { "en": "Continue", "de": "Fortsetzen", "nl": "Doorgaan" } }
             ]
           }
+        ]
+      },
+      {
+        "id": "probe_ae_service",
+        "title": {
+          "en": "Probe 0x00AE service (reverse-engineering)",
+          "de": "0x00AE-Service untersuchen (Reverse-Engineering)",
+          "nl": "0x00AE-service onderzoeken (reverse-engineering)"
+        },
+        "titleFormatted": {
+          "en": "Probe the undocumented 0x00AE BLE service on [[device]]",
+          "de": "Den undokumentierten 0x00AE BLE-Service auf [[device]] untersuchen",
+          "nl": "Onderzoek de niet-gedocumenteerde 0x00AE BLE-service op [[device]]"
+        },
+        "hint": {
+          "en": "Sends ~35 carefully chosen fingerprint patterns to the secondary BLE service (write characteristic ae01) and records every notification on ae02. The result is stored under device settings → AE probe result. Discovers OTA / mesh / button / hidden-feature paths without risk to normal display operation.",
+          "de": "Sendet ~35 sorgfältig gewählte Fingerprint-Patterns an den zweiten BLE-Service (Write-Char ae01) und protokolliert jede Notification auf ae02. Das Ergebnis landet unter Geräte-Einstellungen → AE-Probe-Ergebnis. Entdeckt OTA-/Mesh-/Tasten-/Hidden-Feature-Pfade ohne den normalen Display-Betrieb zu stören.",
+          "nl": "Stuurt ~35 zorgvuldig gekozen fingerprint-patronen naar de secundaire BLE-service (write-karakteristiek ae01) en registreert elke notificatie op ae02. Het resultaat wordt opgeslagen onder apparaatinstellingen → AE-probe-resultaat."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
         ]
       },
       {

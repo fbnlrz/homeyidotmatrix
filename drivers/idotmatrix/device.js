@@ -172,12 +172,33 @@ class IDMDevice extends Homey.Device {
 
   /** Play a procedural animation (matrix, gol, dvd, plasma, starfield, fireworks). */
   async showAnimation(name) {
-    const fn = Animations[name];
-    if (!fn) throw new Error(`unknown animation: ${name}`);
     const size = this._pixelSize();
-    const gif = fn(size);
+    let gif;
+    if (name && name.startsWith('plasma:')) {
+      const variant = name.slice('plasma:'.length);
+      gif = Animations.plasmaVariant(size, 30, variant);
+    } else {
+      const fn = Animations[name];
+      if (!fn) throw new Error(`unknown animation: ${name}`);
+      gif = fn(size);
+    }
     await this.showGif(gif);
     this._logActivity({ type: 'animation', name });
+  }
+
+  /** "X days since/until [date]" big-digit display. */
+  async showDayCounter({ targetIso, mode = 'until', color = '#00ff44' } = {}) {
+    const t = new Date(targetIso);
+    if (!Number.isFinite(t.getTime())) throw new Error('invalid date');
+    const now = new Date();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const days = mode === 'since'
+      ? Math.max(0, Math.floor((now - t) / oneDay))
+      : Math.max(0, Math.ceil((t - now) / oneDay));
+    const size = this._pixelSize();
+    const c = _parseColor(color);
+    const gif = Animations.dayCounter(size, days, '', _packRgb(c.r, c.g, c.b), 0x000000);
+    await this.showGif(gif);
   }
 
   /** Show 2-3 lines of text statically stacked (rendered as a PNG image). */
@@ -377,6 +398,26 @@ class IDMDevice extends Homey.Device {
 
   async chronograph(action = 1) {
     await this.client.write(IDMProtocol.buildChronograph(action));
+  }
+
+  /**
+   * Run the AE-service reverse-engineering probe — sends a series of safe
+   * fingerprint patterns to ae01 and records what comes back on ae02.
+   * Persists the JSON result to the `ae_probe_result` setting for review.
+   */
+  async probeAeService() {
+    if (!this.client.isConnected()) await this.client.connect();
+    const result = await IDMProbe.probeAeService(this.client, {
+      onLog: (...a) => this.log('[ae-probe]', ...a),
+    });
+    const json = JSON.stringify(result, null, 2);
+    this.log(`AE probe done: ${result.productiveProbes}/${result.totalProbes} probes elicited a response`);
+    try {
+      await this.setSettings({ ae_probe_result: json });
+    } catch (e) {
+      this.log('Failed to persist AE probe result:', e.message);
+    }
+    return result;
   }
 
   async probeCapabilities() {

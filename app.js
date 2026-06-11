@@ -136,6 +136,14 @@ class IDMApp extends Homey.App {
       await args.device.showRandomSticker();
     });
 
+    fire('show_day_counter', async args => {
+      await args.device.showDayCounter({
+        targetIso: args.target_iso,
+        mode: args.mode || 'until',
+        color: args.color || '#00ff44',
+      });
+    });
+
     fire('show_progress_bar', async args => {
       await args.device.showProgressBar(
         parseInt(args.percent, 10),
@@ -360,6 +368,10 @@ class IDMApp extends Homey.App {
 
     fire('chronograph', async args => {
       await args.device.chronograph(parseInt(args.action, 10));
+    });
+
+    fire('probe_ae_service', async args => {
+      await args.device.probeAeService();
     });
 
     fire('probe_capabilities', async args => {
