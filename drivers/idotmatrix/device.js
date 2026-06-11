@@ -5,6 +5,7 @@ const IDMProtocol = require('../../lib/IDMProtocol');
 const IDMClient = require('../../lib/IDMClient');
 const IDMProbe = require('../../lib/IDMProbe');
 const Heartbeat = require('../../lib/Heartbeat');
+const RssiHistory = require('../../lib/RssiHistory');
 const Playlist = require('../../lib/Playlist');
 const WordClock = require('../../lib/WordClock');
 const Weather = require('../../lib/Weather');
@@ -53,7 +54,8 @@ class IDMDevice extends Homey.Device {
     });
 
     // Periodic RSSI sample so settings + diagnostic export reflect a fresh value.
-    this._rssiTimer = this.homey.setInterval(() => this._sampleRssi(), 90_000);
+    this.rssiHistory = new RssiHistory(120); // 120 samples × 30 s = 1 h
+    this._rssiTimer = this.homey.setInterval(() => this._sampleRssi(), 30_000);
 
     // Day/night brightness curve — opt-in via settings, polls every minute.
     this.brightnessCurve = new BrightnessCurve({
@@ -83,9 +85,45 @@ class IDMDevice extends Homey.Device {
     try {
       const rssi = await this.client.readRssi();
       if (typeof rssi === 'number') {
+        if (this.rssiHistory) this.rssiHistory.push(rssi);
         await this.setSettings({ last_rssi: `${rssi} dBm` }).catch(() => {});
       }
     } catch (e) { /* ignore */ }
+  }
+
+  /** Default text color from device settings, fallback to user-supplied. */
+  _defaultColor(fallback = '#ffffff') {
+    return (this.getSetting('default_color') || '').trim() || fallback;
+  }
+
+  /**
+   * BLE upload throughput probe. Sends a fixed sequence of write-without-
+   * response writes, measures total time, returns bytes/sec.
+   */
+  async measureBleSpeed({ sizeBytes = 4000, chunkSize = 200 } = {}) {
+    if (!this.client.isConnected()) await this.client.connect();
+    const buf = Buffer.alloc(sizeBytes, 0);
+    // Pretend it's a clock command so the device ignores the payload but
+    // still buffers the bytes. Actually use buildDiyMode then nothing —
+    // safer: do raw writes that the device will discard for being malformed.
+    const start = Date.now();
+    try {
+      // Write the payload chunk by chunk via the underlying char,
+      // bypassing the protocol layer so we measure pure BLE throughput.
+      for (let i = 0; i < buf.length; i += chunkSize) {
+        const slice = buf.subarray(i, i + chunkSize);
+        await this.client.writeChar.write(slice, true); // withoutResponse=true
+      }
+    } catch (e) {
+      throw new Error(`speed test write failed: ${e.message}`);
+    }
+    const ms = Date.now() - start;
+    return {
+      bytes: buf.length,
+      ms,
+      bytesPerSecond: Math.round((buf.length / ms) * 1000),
+      kbps: Math.round((buf.length * 8 / ms)),
+    };
   }
 
   async _onClientConnected() {
@@ -120,8 +158,8 @@ class IDMDevice extends Homey.Device {
     await this.client.write(IDMProtocol.buildBrightness(percent));
   }
 
-  async showText(text, { color = '#ff0000', mode = 1, speed = 95, mirror = false, colorMode = 1 } = {}) {
-    const { r, g, b } = _parseColor(color);
+  async showText(text, { color, mode = 1, speed = 95, mirror = false, colorMode = 1 } = {}) {
+    const { r, g, b } = _parseColor(color || this._defaultColor('#ff0000'));
     const buf = IDMProtocol.buildText(text || '', {
       mode, speed, colorMode, r, g, b, mirror: !!mirror,
     });
@@ -403,91 +441,11 @@ class IDMDevice extends Homey.Device {
   /**
    * Run the AE-service reverse-engineering probe — sends a series of safe
    * fingerprint patterns to ae01 and records what comes back on ae02.
-   * Persists the JSON result to the `ae_probe_result` setting for review.
+   *
+   * NOTE: the AE-service reverse-engineering Flow cards have been removed
+   * from the user-facing UI (see docs/AE-SERVICE.md for findings). The
+   * lib/IDMProbe.js functions remain available for future investigation.
    */
-  async probeAeService() {
-    if (!this.client.isConnected()) await this.client.connect();
-    const result = await IDMProbe.probeAeService(this.client, {
-      onLog: (...a) => this.log('[ae-probe]', ...a),
-    });
-    const json = JSON.stringify(result, null, 2);
-    this.log(`AE probe done: ${result.productiveProbes}/${result.totalProbes} probes elicited a response`);
-    try {
-      await this.setSettings({ ae_probe_result: json });
-    } catch (e) {
-      this.log('Failed to persist AE probe result:', e.message);
-    }
-    return result;
-  }
-
-  /**
-   * Verify a candidate AE key (extracted from the iDotMatrix Android APK).
-   * Tries AES-ECB / AES-CBC zero-IV / AES-CMAC / HMAC-SHA256-trunc16 against
-   * a few small fixed inputs. If any match the device's response, the AE
-   * auth is cracked.
-   */
-  async testAeKey(keyHex, ivHex) {
-    if (!this.client.isConnected()) await this.client.connect();
-    const result = await IDMProbe.testAeKey(this.client, keyHex, ivHex, {
-      onLog: (...a) => this.log('[ae-key]', ...a),
-    });
-    const json = JSON.stringify(result, null, 2);
-    this.log(`AE key test verdict: ${result.verdict}`);
-    try {
-      await this.setSettings({ ae_probe_result: json });
-    } catch (e) {
-      this.log('Failed to persist AE key test result:', e.message);
-    }
-    return result;
-  }
-
-  /** Stage-4 AE probe: determinism + structural patterns + avalanche test (~25 s run). */
-  async probeAeDeterminism() {
-    if (!this.client.isConnected()) await this.client.connect();
-    const result = await IDMProbe.probeAeDeterminism(this.client, {
-      onLog: (...a) => this.log('[ae-det]', ...a),
-    });
-    const json = JSON.stringify(result, null, 2);
-    this.log(`AE determinism done: ${result.determinism.map(d => d.input + '→' + d.verdict).join(', ')}`);
-    try {
-      await this.setSettings({ ae_probe_result: json });
-    } catch (e) {
-      this.log('Failed to persist AE determinism result:', e.message);
-    }
-    return result;
-  }
-
-  /** Stage-3 AE probe: pool size + 1B/2B input mapping + handshake followups (~70 s run). */
-  async probeAeMapping() {
-    if (!this.client.isConnected()) await this.client.connect();
-    const result = await IDMProbe.probeAeMapping(this.client, {
-      onLog: (...a) => this.log('[ae-mapping]', ...a),
-    });
-    const json = JSON.stringify(result, null, 2);
-    this.log(`AE mapping done: pool=${result.poolEstimate.uniquePayloads}, 1B-triggers=${result.inputMap.oneByteTriggers.length}, 2B-triggers=${result.inputMap.twoByteTriggers.length}`);
-    try {
-      await this.setSettings({ ae_probe_result: json });
-    } catch (e) {
-      this.log('Failed to persist AE mapping result:', e.message);
-    }
-    return result;
-  }
-
-  /** Stage-2 AE probe: classify the challenge as fresh nonce vs fixed value, try auth responses. */
-  async probeAeChallenge() {
-    if (!this.client.isConnected()) await this.client.connect();
-    const result = await IDMProbe.probeAeChallenge(this.client, {
-      onLog: (...a) => this.log('[ae-challenge]', ...a),
-    });
-    const json = JSON.stringify(result, null, 2);
-    this.log(`AE challenge probe: verdict=${result.nonceTest.verdict}, productive auth probes=${result.productiveAuthProbes.length}`);
-    try {
-      await this.setSettings({ ae_probe_result: json });
-    } catch (e) {
-      this.log('Failed to persist AE challenge result:', e.message);
-    }
-    return result;
-  }
 
   async probeCapabilities() {
     if (!this.client.isConnected()) await this.client.connect();

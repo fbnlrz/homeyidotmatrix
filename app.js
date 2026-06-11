@@ -6,6 +6,8 @@ const MediaStore = require('./lib/MediaStore');
 const RemoteMediaIndex = require('./lib/RemoteMediaIndex');
 const StickerPack = require('./lib/StickerPack');
 const ActivityLog = require('./lib/ActivityLog');
+const FlowStats = require('./lib/FlowStats');
+const Font = require('./lib/font8x16');
 const { ImagePipeline, isGif } = require('./lib/ImagePipeline');
 const DiagnosticBundle = require('./lib/DiagnosticBundle');
 
@@ -38,6 +40,7 @@ class IDMApp extends Homey.App {
 
     this.stickers = new StickerPack(__dirname);
     this.activity = new ActivityLog(50);
+    this.flowStats = new FlowStats();
     const stickerList = await this.stickers.list();
     this.log(`sticker pack: ${stickerList.length} bundled assets`);
 
@@ -76,15 +79,14 @@ class IDMApp extends Homey.App {
     const card = id => this.homey.flow.getActionCard(id);
     const fire = (id, handler) => {
       card(id).registerRunListener(async args => {
-        // Every Flow-card trigger counts as user activity → resets the
-        // auto-screensaver clock. The screensaver itself bypasses fire()
-        // and calls device methods directly, so it never resets itself.
         if (args.device && args.device._touchActivity) args.device._touchActivity();
-        // All image / display actions run async to dodge the 10s Flow timeout.
-        // Errors are logged on the device so the user can find them.
         Promise.resolve()
           .then(() => handler.call(this, args))
-          .catch(err => args.device && args.device.error && args.device.error(`${id} failed: ${err.message}`));
+          .then(() => this.flowStats.record(id, true))
+          .catch(err => {
+            this.flowStats.record(id, false, err.message);
+            if (args.device && args.device.error) args.device.error(`${id} failed: ${err.message}`);
+          });
       });
     };
 
@@ -368,26 +370,6 @@ class IDMApp extends Homey.App {
 
     fire('chronograph', async args => {
       await args.device.chronograph(parseInt(args.action, 10));
-    });
-
-    fire('probe_ae_service', async args => {
-      await args.device.probeAeService();
-    });
-
-    fire('probe_ae_challenge', async args => {
-      await args.device.probeAeChallenge();
-    });
-
-    fire('probe_ae_mapping', async args => {
-      await args.device.probeAeMapping();
-    });
-
-    fire('probe_ae_determinism', async args => {
-      await args.device.probeAeDeterminism();
-    });
-
-    fire('test_ae_key', async args => {
-      await args.device.testAeKey(args.key_hex, args.iv);
     });
 
     fire('probe_capabilities', async args => {

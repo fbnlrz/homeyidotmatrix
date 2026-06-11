@@ -109,6 +109,70 @@ module.exports = {
     return { ok: true, devices: devices.length };
   },
 
+  async rssiHistory({ homey }) {
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    return devices.map(d => ({
+      id: d.getData() && d.getData().id,
+      name: d.getName(),
+      samples: d.rssiHistory ? d.rssiHistory.list() : [],
+    }));
+  },
+
+  async flowStats({ homey }) {
+    return homey.app.flowStats ? homey.app.flowStats.list() : [];
+  },
+
+  async speedTest({ homey }) {
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    const results = [];
+    for (const dev of devices) {
+      try {
+        const r = await dev.measureBleSpeed({ sizeBytes: 4000, chunkSize: 200 });
+        results.push({ name: dev.getName(), ...r });
+      } catch (e) {
+        results.push({ name: dev.getName(), error: e.message });
+      }
+    }
+    return results;
+  },
+
+  async smokeTest({ homey }) {
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    if (!devices.length) throw new Error('no devices paired');
+    const dev = devices[0];
+    const steps = [];
+    const step = async (name, fn) => {
+      const t0 = Date.now();
+      try { await fn(); steps.push({ name, ok: true, ms: Date.now() - t0 }); }
+      catch (e) { steps.push({ name, ok: false, ms: Date.now() - t0, error: e.message }); }
+    };
+    await step('solid red',  () => dev.showSolidColor('#ff0000'));
+    await new Promise(r => setTimeout(r, 500));
+    await step('solid green',() => dev.showSolidColor('#00ff00'));
+    await new Promise(r => setTimeout(r, 500));
+    await step('effect 0',   () => dev.showEffect(0));
+    await new Promise(r => setTimeout(r, 800));
+    await step('clock',      () => dev.showClock({}));
+    await new Promise(r => setTimeout(r, 800));
+    await step('text HELLO', () => dev.showText('HELLO', { color: '#ffaa00' }));
+    return { device: dev.getName(), steps };
+  },
+
+  async fontGlyphs({ homey }) {
+    const Font = require('./lib/font8x16');
+    const out = {};
+    for (const code of Object.keys(Font)) {
+      if (code === 'getGlyph' || isNaN(parseInt(code, 10))) continue;
+      const buf = Font[code];
+      if (!Buffer.isBuffer(buf)) continue;
+      out[String.fromCharCode(parseInt(code, 10))] = Array.from(buf);
+    }
+    return out;
+  },
+
   async previewPixelArt({ homey, body }) {
     let buf;
     if (Buffer.isBuffer(body)) buf = body;
