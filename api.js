@@ -57,4 +57,22 @@ module.exports = {
   async diagnostic({ homey }) {
     return homey.app.diagnostics.build();
   },
+
+  /**
+   * Live preview: take a PNG buffer from the settings-page editor and push
+   * it to every paired iDotMatrix device without saving to the library.
+   */
+  async previewPixelArt({ homey, body }) {
+    let buf;
+    if (Buffer.isBuffer(body)) buf = body;
+    else if (body && body.type === 'Buffer' && Array.isArray(body.data)) buf = Buffer.from(body.data);
+    else throw new Error('expected raw PNG bytes');
+    const driver = homey.drivers.getDriver('idotmatrix');
+    const devices = driver ? driver.getDevices() : [];
+    if (!devices.length) throw new Error('no iDotMatrix devices paired');
+    for (const dev of devices) {
+      await dev.showImage(buf);
+    }
+    return { ok: true, devices: devices.length };
+  },
 };

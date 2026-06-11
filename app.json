@@ -42,10 +42,11 @@
   "support": "https://community.homey.app/t/idotmatrix-app-matrix-devices/155964",
   "homeyCommunityTopicId": 155964,
   "api": {
-    "listMedia":     { "method": "GET",    "path": "/media" },
-    "uploadMedia":   { "method": "POST",   "path": "/media/:name" },
-    "deleteMedia":   { "method": "DELETE", "path": "/media/:name" },
-    "diagnostic":    { "method": "GET",    "path": "/diagnostic" }
+    "listMedia":       { "method": "GET",    "path": "/media" },
+    "uploadMedia":     { "method": "POST",   "path": "/media/:name" },
+    "deleteMedia":     { "method": "DELETE", "path": "/media/:name" },
+    "diagnostic":      { "method": "GET",    "path": "/diagnostic" },
+    "previewPixelArt": { "method": "POST",   "path": "/preview-pixel-art" }
   },
   "images": {
     "small": "/assets/images/small.png",

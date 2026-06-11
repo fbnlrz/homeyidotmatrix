@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>iDotMatrix</title>
+  <link href="/homey.css" rel="stylesheet" type="text/css" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 18px; max-width: 920px; }
+    h2 { margin-top: 28px; color: #ff3366; }
+    section { background: #fff; border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .dropzone {
+      border: 2px dashed #ccc; border-radius: 10px; padding: 28px; text-align: center;
+      color: #888; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .dropzone.over { border-color: #ff3366; background: #ffeef3; color: #444; }
+    .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; }
+    .file { border: 1px solid #eee; border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; word-break: break-all; }
+    .file .name { font-weight: 500; margin-bottom: 4px; }
+    .file button { font-size: 11px; padding: 2px 6px; margin-top: 4px; cursor: pointer; }
+    .grid-wrap { display: inline-block; border: 1px solid #ddd; padding: 4px; background: #111; margin-top: 12px; }
+    #grid { display: grid; gap: 1px; background: #333; }
+    .cell { width: 12px; height: 12px; background: #000; cursor: crosshair; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .toolbar input[type=text] { padding: 4px 6px; }
+    .toolbar button { padding: 6px 12px; cursor: pointer; }
+    .msg { padding: 8px; border-radius: 6px; margin: 8px 0; font-size: 13px; display: none; }
+    .msg.ok { background: #e9f7ec; color: #1b6f2c; display: block; }
+    .msg.err { background: #fdecec; color: #8a1f1f; display: block; }
+    select, input[type=color], input[type=number] { padding: 4px 6px; }
+  </style>
+</head>
+<body>
+
+  <h1>iDotMatrix</h1>
+  <p>
+    Manage uploaded images and draw your own pixel art.
+    Files saved here are available in the <strong>Show stored image</strong> Flow card.
+  </p>
+
+  <section>
+    <h2>Upload</h2>
+    <div id="dropzone" class="dropzone">
+      Drop PNG / JPG / GIF here, or click to pick<br/>
+      <small>Max 5 MB per file</small>
+    </div>
+    <input type="file" id="filepicker" multiple accept="image/png,image/jpeg,image/gif,image/bmp,image/webp" style="display:none"/>
+    <div id="msg-upload" class="msg"></div>
+  </section>
+
+  <section>
+    <h2>Library</h2>
+    <button id="refresh">Refresh</button>
+    <div id="files" class="files"></div>
+  </section>
+
+  <section>
+    <h2>Pixel art editor</h2>
+    <div class="toolbar">
+      <label>Size <select id="ed-size">
+        <option value="16">16×16</option>
+        <option value="32" selected>32×32</option>
+        <option value="64">64×64</option>
+      </select></label>
+      <label>Color <input type="color" id="ed-color" value="#ff3366"/></label>
+      <button id="ed-fill">Fill</button>
+      <button id="ed-clear">Clear</button>
+      <input type="text" id="ed-name" placeholder="pixel-art.png" size="20"/>
+      <button id="ed-save">Save to library</button>
+      <button id="ed-preview">Preview on display</button>
+    </div>
+    <small>Left-click to paint. Shift+click to erase.</small>
+    <div class="grid-wrap"><div id="grid"></div></div>
+    <div id="msg-editor" class="msg"></div>
+  </section>
+
+  <script type="text/javascript">
+
+    function onHomeyReady(Homey) {
+      Homey.ready();
+
+      function showMsg(id, text, ok) {
+        const el = document.getElementById(id);
+        el.className = 'msg ' + (ok ? 'ok' : 'err');
+        el.textContent = text;
+      }
+      function showError(e, id) { showMsg(id || 'msg-upload', (e && e.message) || String(e), false); }
+
+      function refresh() {
+        Homey.api('GET', '/media').then(items => {
+          const root = document.getElementById('files');
+          root.innerHTML = '';
+          if (!items.length) {
+            root.innerHTML = '<p style="grid-column:1/-1;color:#888">No files yet — drop one above or save your pixel art below.</p>';
+            return;
+          }
+          for (const it of items) {
+            const div = document.createElement('div');
+            div.className = 'file';
+            div.innerHTML =
+              '<div class="name">' + it.name + '</div>' +
+              '<small>' + (it.size / 1024).toFixed(1) + ' KB</small><br/>' +
+              '<button data-name="' + it.name + '" class="del">delete</button>';
+            root.appendChild(div);
+          }
+          root.querySelectorAll('.del').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              if (!confirm('Delete ' + btn.dataset.name + '?')) return;
+              try {
+                await Homey.api('DELETE', '/media/' + encodeURIComponent(btn.dataset.name));
+                refresh();
+              } catch (e) { showError(e); }
+            });
+          });
+        }).catch(showError);
+      }
+      document.getElementById('refresh').addEventListener('click', refresh);
+
+      const dz = document.getElementById('dropzone');
+      const fp = document.getElementById('filepicker');
+      dz.addEventListener('click', () => fp.click());
+      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, () => dz.classList.remove('over')));
+      dz.addEventListener('drop', e => { e.preventDefault(); uploadAll(Array.from(e.dataTransfer.files)); });
+      fp.addEventListener('change', () => uploadAll(Array.from(fp.files)));
+
+      async function uploadAll(files) {
+        for (const f of files) {
+          try {
+            if (f.size > 5 * 1024 * 1024) throw new Error(f.name + ': too large');
+            const buf = await f.arrayBuffer();
+            await uploadBuffer(f.name, new Uint8Array(buf));
+            showMsg('msg-upload', 'uploaded ' + f.name, true);
+          } catch (e) { showError(e); }
+        }
+        refresh();
+      }
+
+      function uploadBuffer(name, bytes) {
+        return Homey.api('POST', '/media/' + encodeURIComponent(name), {
+          type: 'Buffer',
+          data: Array.from(bytes),
+        });
+      }
+
+      // ---- pixel-art editor ----
+      const grid = document.getElementById('grid');
+      let gridSize = 32;
+      let cells = [];
+      let mouseDown = false;
+      document.addEventListener('mousedown', () => mouseDown = true);
+      document.addEventListener('mouseup',   () => mouseDown = false);
+
+      function buildGrid(size) {
+        gridSize = size;
+        grid.style.gridTemplateColumns = 'repeat(' + size + ', 12px)';
+        grid.innerHTML = '';
+        cells = Array.from({ length: size }, () => Array(size).fill('#000000'));
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const c = document.createElement('div');
+            c.className = 'cell';
+            c.dataset.x = x;
+            c.dataset.y = y;
+            c.addEventListener('mousedown', paint);
+            c.addEventListener('mouseover', e => { if (mouseDown) paint(e); });
+            grid.appendChild(c);
+          }
+        }
+      }
+      function paint(e) {
+        const x = +e.target.dataset.x;
+        const y = +e.target.dataset.y;
+        const color = e.shiftKey ? '#000000' : document.getElementById('ed-color').value;
+        cells[y][x] = color;
+        e.target.style.background = color;
+      }
+      function fillAll(color) {
+        for (let y = 0; y < gridSize; y++)
+          for (let x = 0; x < gridSize; x++)
+            cells[y][x] = color;
+        document.querySelectorAll('.cell').forEach(c => c.style.background = color);
+      }
+      document.getElementById('ed-size').addEventListener('change', e => buildGrid(+e.target.value));
+      document.getElementById('ed-clear').addEventListener('click', () => fillAll('#000000'));
+      document.getElementById('ed-fill').addEventListener('click', () => fillAll(document.getElementById('ed-color').value));
+
+      function exportPng() {
+        const canvas = document.createElement('canvas');
+        canvas.width = gridSize;
+        canvas.height = gridSize;
+        const ctx = canvas.getContext('2d');
+        for (let y = 0; y < gridSize; y++)
+          for (let x = 0; x < gridSize; x++) {
+            ctx.fillStyle = cells[y][x];
+            ctx.fillRect(x, y, 1, 1);
+          }
+        return new Promise(resolve => canvas.toBlob(b => b.arrayBuffer().then(buf => resolve(new Uint8Array(buf))), 'image/png'));
+      }
+
+      document.getElementById('ed-save').addEventListener('click', async () => {
+        const raw = (document.getElementById('ed-name').value || ('pixel-art-' + Date.now() + '.png')).trim();
+        const name = raw.endsWith('.png') ? raw : raw + '.png';
+        try {
+          const bytes = await exportPng();
+          await uploadBuffer(name, bytes);
+          showMsg('msg-editor', 'saved as ' + name, true);
+          refresh();
+        } catch (e) { showError(e, 'msg-editor'); }
+      });
+
+      document.getElementById('ed-preview').addEventListener('click', async () => {
+        try {
+          const bytes = await exportPng();
+          await Homey.api('POST', '/preview-pixel-art', {
+            type: 'Buffer',
+            data: Array.from(bytes),
+          });
+          showMsg('msg-editor', 'sent to display', true);
+        } catch (e) { showError(e, 'msg-editor'); }
+      });
+
+      buildGrid(32);
+      refresh();
+    }
+  </script>
+</body>
+</html>
