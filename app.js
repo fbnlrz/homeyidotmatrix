@@ -76,6 +76,10 @@ class IDMApp extends Homey.App {
     const card = id => this.homey.flow.getActionCard(id);
     const fire = (id, handler) => {
       card(id).registerRunListener(async args => {
+        // Every Flow-card trigger counts as user activity → resets the
+        // auto-screensaver clock. The screensaver itself bypasses fire()
+        // and calls device methods directly, so it never resets itself.
+        if (args.device && args.device._touchActivity) args.device._touchActivity();
         // All image / display actions run async to dodge the 10s Flow timeout.
         // Errors are logged on the device so the user can find them.
         Promise.resolve()
@@ -97,6 +101,39 @@ class IDMApp extends Homey.App {
 
     fire('show_animation', async args => {
       await args.device.showAnimation(args.animation);
+    });
+
+    fire('show_multiline_text', async args => {
+      const lines = [args.line1, args.line2, args.line3].filter(s => s && s.trim());
+      await args.device.showMultilineText(lines, {
+        color: args.color || '#ffffff',
+        background: args.background || '#000000',
+      });
+      this.activity.add({ device: args.device.getName(), type: 'multiline', text: lines.join(' / ') });
+    });
+
+    fire('show_date', async args => {
+      await args.device.showDate({
+        format: args.format || 'dd.MM',
+        locale: args.locale || 'en',
+        color: args.color || '#ffffff',
+        mode: parseInt(args.mode, 10),
+        mirror: !!args.mirror,
+      });
+    });
+
+    fire('show_countdown_to_event', async args => {
+      await args.device.showCountdownTo({
+        targetIso: args.target_iso,
+        label: args.label || '',
+        color: args.color || '#ffffff',
+        mode: 1,
+        mirror: !!args.mirror,
+      });
+    });
+
+    fire('show_random_sticker', async args => {
+      await args.device.showRandomSticker();
     });
 
     fire('show_progress_bar', async args => {

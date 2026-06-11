@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": ["local"],
@@ -99,6 +99,29 @@
               "type": "checkbox",
               "label": { "en": "Rotate 180°", "de": "180° gedreht", "nl": "180° draaien" },
               "value": false
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": { "en": "Auto-screensaver", "de": "Auto-Bildschirmschoner", "nl": "Auto-screensaver" },
+          "children": [
+            { "id": "screensaver_enabled", "type": "checkbox", "label": { "en": "Enable when idle", "de": "Bei Inaktivität aktivieren", "nl": "Inschakelen bij inactiviteit" }, "value": false },
+            { "id": "screensaver_idle_minutes", "type": "number", "label": { "en": "Idle minutes before starting", "de": "Minuten Inaktivität bis Start", "nl": "Inactieve minuten voor start" }, "min": 1, "max": 1440, "step": 1, "value": 10 },
+            {
+              "id": "screensaver_type", "type": "dropdown",
+              "label": { "en": "What to show", "de": "Was zeigen", "nl": "Wat te tonen" },
+              "value": "plasma",
+              "values": [
+                { "id": "random", "label": { "en": "Random animation", "de": "Zufällige Animation", "nl": "Willekeurige animatie" } },
+                { "id": "matrixRain", "label": { "en": "Matrix rain", "de": "Matrix-Regen", "nl": "Matrix-regen" } },
+                { "id": "gameOfLife", "label": { "en": "Game of Life", "de": "Game of Life", "nl": "Game of Life" } },
+                { "id": "dvdBouncer", "label": { "en": "DVD bouncer", "de": "DVD-Bouncer", "nl": "DVD-bouncer" } },
+                { "id": "plasma", "label": { "en": "Plasma", "de": "Plasma", "nl": "Plasma" } },
+                { "id": "starfield", "label": { "en": "Starfield", "de": "Sternenfeld", "nl": "Sterrenveld" } },
+                { "id": "fireworks", "label": { "en": "Fireworks", "de": "Feuerwerk", "nl": "Vuurwerk" } },
+                { "id": "effect:0", "label": { "en": "Built-in rainbow", "de": "Eingebauter Regenbogen", "nl": "Ingebouwde regenboog" } }
+              ]
             }
           ]
         },
@@ -483,6 +506,98 @@
           "en": "Stop sequence on [[device]]",
           "de": "Sequenz auf [[device]] stoppen",
           "nl": "Stop sequentie op [[device]]"
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
+        "id": "show_multiline_text",
+        "title": { "en": "Show multi-line text (static)", "de": "Mehrzeiliger Text (statisch)", "nl": "Toon meerregelige tekst" },
+        "titleFormatted": {
+          "en": "Show [[line1]] / [[line2]] / [[line3]] in [[color]] on [[background]]",
+          "de": "[[line1]] / [[line2]] / [[line3]] in [[color]] auf [[background]] zeigen",
+          "nl": "Toon [[line1]] / [[line2]] / [[line3]] in [[color]] op [[background]]"
+        },
+        "hint": {
+          "en": "Renders 1-3 lines stacked vertically as a static image. Empty lines are skipped.",
+          "de": "Rendert 1-3 Zeilen vertikal gestapelt als statisches Bild. Leere Zeilen werden übersprungen.",
+          "nl": "Geeft 1-3 regels verticaal gestapeld weer als statische afbeelding. Lege regels worden overgeslagen."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "line1", "type": "text", "title": { "en": "Line 1", "de": "Zeile 1", "nl": "Regel 1" } },
+          { "name": "line2", "type": "text", "title": { "en": "Line 2", "de": "Zeile 2", "nl": "Regel 2" }, "placeholder": { "en": "(optional)" } },
+          { "name": "line3", "type": "text", "title": { "en": "Line 3", "de": "Zeile 3", "nl": "Regel 3" }, "placeholder": { "en": "(optional)" } },
+          { "name": "color", "type": "color", "title": { "en": "Text color", "de": "Textfarbe", "nl": "Tekstkleur" } },
+          { "name": "background", "type": "color", "title": { "en": "Background", "de": "Hintergrund", "nl": "Achtergrond" } }
+        ]
+      },
+      {
+        "id": "show_date",
+        "title": { "en": "Show date", "de": "Datum anzeigen", "nl": "Toon datum" },
+        "titleFormatted": {
+          "en": "Show date [[format]] in [[locale]] color [[color]] ([[mode]], mirror [[mirror]])",
+          "de": "Datum [[format]] in [[locale]] Farbe [[color]] ([[mode]], gespiegelt [[mirror]]) zeigen",
+          "nl": "Toon datum [[format]] in [[locale]] kleur [[color]] ([[mode]], gespiegeld [[mirror]])"
+        },
+        "hint": {
+          "en": "Format tokens: dd, MM, yyyy, yy, EEE (weekday abbreviation, locale-aware). Examples: 'dd.MM' → 09.06, 'EEE dd.MM' → Mon 09.06.",
+          "de": "Format-Tokens: dd, MM, yyyy, yy, EEE (Wochentag-Kürzel, locale-abhängig). Beispiele: 'dd.MM' → 09.06, 'EEE dd.MM' → Mo 09.06.",
+          "nl": "Format-tokens: dd, MM, yyyy, yy, EEE (dag-afkorting, locale-afhankelijk). Voorbeeld: 'dd.MM' → 09.06."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "format", "type": "text", "title": { "en": "Format", "de": "Format", "nl": "Formaat" }, "placeholder": { "en": "dd.MM" } },
+          {
+            "name": "locale", "type": "dropdown",
+            "title": { "en": "Language", "de": "Sprache", "nl": "Taal" },
+            "values": [
+              { "id": "en", "label": { "en": "English", "de": "Englisch", "nl": "Engels" } },
+              { "id": "de", "label": { "en": "German", "de": "Deutsch", "nl": "Duits" } },
+              { "id": "nl", "label": { "en": "Dutch", "de": "Niederländisch", "nl": "Nederlands" } }
+            ]
+          },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          {
+            "name": "mode", "type": "dropdown",
+            "title": { "en": "Display mode", "de": "Anzeige-Modus", "nl": "Weergavemodus" },
+            "values": [
+              { "id": "0", "label": { "en": "Static", "de": "Statisch", "nl": "Statisch" } },
+              { "id": "1", "label": { "en": "Marquee", "de": "Laufschrift", "nl": "Lopende tekst" } }
+            ]
+          },
+          { "name": "mirror", "type": "checkbox", "title": { "en": "Mirror", "de": "Spiegeln", "nl": "Spiegelen" }, "value": false }
+        ]
+      },
+      {
+        "id": "show_countdown_to_event",
+        "title": { "en": "Show countdown to event", "de": "Countdown bis Event anzeigen", "nl": "Toon aftellen tot evenement" },
+        "titleFormatted": {
+          "en": "Countdown to [[target_iso]] labelled [[label]] in [[color]] mirror [[mirror]]",
+          "de": "Countdown bis [[target_iso]] mit Label [[label]] in [[color]] gespiegelt [[mirror]]",
+          "nl": "Aftellen tot [[target_iso]] met label [[label]] in [[color]] gespiegeld [[mirror]]"
+        },
+        "hint": {
+          "en": "Wire a Homey calendar 'next event' datetime token into Target time. Label is shown before the countdown (e.g. 'Meeting').",
+          "de": "Verbinde einen Homey-Kalender 'nächstes Event' Datum-Token mit Ziel-Zeit. Label wird vor dem Countdown angezeigt (z.B. 'Meeting').",
+          "nl": "Koppel een Homey-kalender 'volgend evenement' datetime-token aan Doeltijd. Label wordt voor het aftellen getoond (bijv. 'Vergadering')."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "target_iso", "type": "text", "title": { "en": "Target time (ISO)", "de": "Ziel-Zeit (ISO)", "nl": "Doeltijd (ISO)" } },
+          { "name": "label", "type": "text", "title": { "en": "Label", "de": "Bezeichnung", "nl": "Label" }, "placeholder": { "en": "e.g. Meeting" } },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          { "name": "mirror", "type": "checkbox", "title": { "en": "Mirror", "de": "Spiegeln", "nl": "Spiegelen" }, "value": false }
+        ]
+      },
+      {
+        "id": "show_random_sticker",
+        "title": { "en": "Show random sticker", "de": "Zufälligen Sticker zeigen", "nl": "Toon willekeurige sticker" },
+        "titleFormatted": {
+          "en": "Show random sticker on [[device]]",
+          "de": "Zufälligen Sticker auf [[device]] zeigen",
+          "nl": "Toon willekeurige sticker op [[device]]"
         },
         "args": [
           { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }

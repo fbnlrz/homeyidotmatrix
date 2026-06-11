@@ -10,6 +10,8 @@ const WordClock = require('../../lib/WordClock');
 const Weather = require('../../lib/Weather');
 const Animations = require('../../lib/Animations');
 const BrightnessCurve = require('../../lib/BrightnessCurve');
+const Screensaver = require('../../lib/Screensaver');
+const Font = require('../../lib/font8x16');
 
 // fa03 ack pattern: 0x05 0x00 <cmd> <subcmd> 0x01. The image upload opcode
 // uses cmd 0x01 with subcmd 0x00 (per-chunk accepted) or 0x03 (upload done).
@@ -58,6 +60,16 @@ class IDMDevice extends Homey.Device {
       device: this, client: this.client, onLog: (...a) => this.log(...a),
     });
     this.brightnessCurve.start();
+
+    this.screensaver = new Screensaver({
+      device: this, client: this.client, onLog: (...a) => this.log(...a),
+    });
+    this.screensaver.start();
+  }
+
+  /** Called by every user-initiated content method to reset the idle clock. */
+  _touchActivity() {
+    if (this.screensaver) this.screensaver.touch();
   }
 
   _brightnessPercent() {
@@ -166,6 +178,42 @@ class IDMDevice extends Homey.Device {
     const gif = fn(size);
     await this.showGif(gif);
     this._logActivity({ type: 'animation', name });
+  }
+
+  /** Show 2-3 lines of text statically stacked (rendered as a PNG image). */
+  async showMultilineText(lines, { color = '#ffffff', background = '#000000' } = {}) {
+    const size = this._pixelSize();
+    const png = await _renderMultilinePng(size, lines.filter(Boolean), _parseColor(color), _parseColor(background));
+    await this.showImage(png);
+  }
+
+  /** Show the current date in the given format. */
+  async showDate({ format = 'dd.MM', color = '#ffffff', mode = 0, mirror = false, locale = 'en' } = {}) {
+    const text = _formatDate(new Date(), format, locale);
+    if (mode === 0) {
+      // Static — render as PNG so it doesn't scroll
+      await this.showMultilineText([text], { color });
+    } else {
+      await this.showText(text, { color, mode, speed: 90, mirror });
+    }
+  }
+
+  /** Show a countdown to a future ISO timestamp. */
+  async showCountdownTo({ targetIso, label = '', color = '#ffffff', mode = 1, mirror = false } = {}) {
+    const t = new Date(targetIso);
+    if (!Number.isFinite(t.getTime())) throw new Error('invalid target time');
+    const text = _formatTimeUntil(t, label);
+    await this.showText(text, { color, mode, speed: 90, mirror });
+  }
+
+  /** Pick a random sticker from the bundled pack and show it. */
+  async showRandomSticker() {
+    const stickers = await this.homey.app.stickers.list();
+    if (!stickers.length) throw new Error('no stickers available');
+    const pick = stickers[Math.floor(Math.random() * stickers.length)];
+    const buf = await this.homey.app.stickers.read(pick.name);
+    await this.homey.app._renderImage(this, buf, { kind: 'auto', fit: 'center', sourceLabel: `sticker/${pick.name}` });
+    this._logActivity({ type: 'sticker', name: pick.name });
   }
 
   /** Show a horizontal progress bar. */
@@ -394,6 +442,7 @@ class IDMDevice extends Homey.Device {
     if (this._restoreTimer) clearTimeout(this._restoreTimer);
     if (this.heartbeat) this.heartbeat.stop();
     if (this.brightnessCurve) this.brightnessCurve.stop();
+    if (this.screensaver) this.screensaver.stop();
     if (this._rssiTimer) this.homey.clearInterval(this._rssiTimer);
     try { await this.client.disconnect(); } catch (e) { /* ignore */ }
   }
@@ -431,6 +480,90 @@ async function _renderTestPatternPng(size) {
     img.setPixelColor(yellow >>> 0, c + i, c);
   }
   return img.getBuffer('image/png', { colorType: 2, deflateLevel: 9 });
+}
+
+/**
+ * Render N text lines stacked vertically into a single PNG, using the
+ * built-in 5×7 font scaled to fit. 1 line → ~3× scale, 2 → ~2×, 3+ → 1×.
+ */
+async function _renderMultilinePng(size, lines, fg, bg) {
+  const { Jimp } = require('jimp');
+  const bgInt = (((bg.r << 24) | (bg.g << 16) | (bg.b << 8) | 0xff) >>> 0);
+  const fgInt = (((fg.r << 24) | (fg.g << 16) | (fg.b << 8) | 0xff) >>> 0);
+  const img = new Jimp({ width: size, height: size, color: bgInt });
+  const n = Math.max(1, lines.length);
+  // Pick a per-pixel scale based on how many lines fit; keep at least 5 px row height per line.
+  const charH = 7; // base glyph height
+  const totalRowsAvail = size - 2;
+  const scale = Math.max(1, Math.floor(totalRowsAvail / (charH * n + (n - 1))));
+  const lineH = charH * scale;
+  const charW = 5 * scale + scale; // 5 px glyph + 1 px tracking
+  const totalH = lineH * n + (n - 1) * scale;
+  const startY = Math.floor((size - totalH) / 2);
+  for (let li = 0; li < n; li++) {
+    const text = String(lines[li] || '');
+    const width = text.length * charW;
+    let x = Math.max(0, Math.floor((size - width) / 2));
+    const y = startY + li * (lineH + scale);
+    for (const ch of text) {
+      const glyph = Font.getGlyph ? Font.getGlyph(ch) : null;
+      if (glyph) _blitGlyph(img, glyph, x, y, scale, fgInt);
+      x += charW;
+    }
+  }
+  return img.getBuffer('image/png', { colorType: 2, deflateLevel: 9 });
+}
+
+function _blitGlyph(img, glyphRows, x0, y0, scale, color) {
+  for (let r = 0; r < 7; r++) {
+    const row = glyphRows[r] || 0;
+    for (let c = 0; c < 5; c++) {
+      if (!((row >> (4 - c)) & 1)) continue;
+      for (let dy = 0; dy < scale; dy++) {
+        for (let dx = 0; dx < scale; dx++) {
+          const px = x0 + c * scale + dx;
+          const py = y0 + r * scale + dy;
+          if (px >= 0 && px < img.width && py >= 0 && py < img.height) {
+            img.setPixelColor(color >>> 0, px, py);
+          }
+        }
+      }
+    }
+  }
+}
+
+/** Format a Date per a simple token string (dd, MM, yyyy, EEE). */
+function _formatDate(d, fmt, locale) {
+  const pad2 = n => String(n).padStart(2, '0');
+  const dows = {
+    en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    de: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+    nl: ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'],
+  };
+  const dow = (dows[locale] || dows.en)[d.getDay()];
+  return String(fmt || 'dd.MM')
+    .replace(/yyyy/g, String(d.getFullYear()))
+    .replace(/yy/g, pad2(d.getFullYear() % 100))
+    .replace(/MM/g, pad2(d.getMonth() + 1))
+    .replace(/M/g, String(d.getMonth() + 1))
+    .replace(/dd/g, pad2(d.getDate()))
+    .replace(/d/g, String(d.getDate()))
+    .replace(/EEE/g, dow);
+}
+
+/** "in 2h 15m", "2d 3h", "1m 20s" — short human-readable countdown. */
+function _formatTimeUntil(target, label) {
+  let s = Math.max(0, Math.round((target.getTime() - Date.now()) / 1000));
+  if (s === 0) return label ? `${label} now` : 'now';
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600);  s -= h * 3600;
+  const m = Math.floor(s / 60);    s -= m * 60;
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (h || d) parts.push(`${h}h`);
+  if (!d) parts.push(`${m}m`);
+  if (!d && !h) parts.push(`${s}s`);
+  return label ? `${label}: ${parts.join(' ')}` : parts.join(' ');
 }
 
 function _packRgb(r, g, b) {

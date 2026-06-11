@@ -22,8 +22,26 @@
  */
 module.exports = {
 
-  async listMedia({ homey }) {
-    return homey.app.media.list();
+  async listMedia({ homey, query }) {
+    const items = await homey.app.media.list();
+    // Optional thumbnails (?withData=1) — small files inlined as data URLs so
+    // the settings page can <img> them without a separate request per file.
+    if (query && (query.withData === '1' || query.withData === 'true')) {
+      for (const it of items) {
+        if (it.size > 100 * 1024) continue; // skip oversized
+        try {
+          const buf = await homey.app.media.read(it.name);
+          const ext = (it.name.split('.').pop() || 'png').toLowerCase();
+          const mime = ext === 'gif' ? 'image/gif'
+            : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+            : ext === 'bmp' ? 'image/bmp'
+            : ext === 'webp' ? 'image/webp'
+            : 'image/png';
+          it.dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+        } catch (e) { /* skip on read error */ }
+      }
+    }
+    return items;
   },
 
   async uploadMedia({ homey, params, body }) {

@@ -16,6 +16,7 @@
     .dropzone.over { border-color: #ff3366; background: #ffeef3; color: #444; }
     .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 14px; }
     .file { border: 1px solid #eee; border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; word-break: break-all; }
+    .file img { width: 96px; height: 96px; object-fit: contain; image-rendering: pixelated; background: #111; border-radius: 4px; display: block; margin: 0 auto 6px; }
     .file .name { font-weight: 500; margin-bottom: 4px; }
     .file button { font-size: 11px; padding: 2px 6px; margin-top: 4px; cursor: pointer; }
     .grid-wrap { display: inline-block; border: 1px solid #ddd; padding: 4px; background: #111; margin-top: 12px; }
@@ -120,7 +121,7 @@
       function showError(e, id) { showMsg(id || 'msg-upload', (e && e.message) || String(e), false); }
 
       function refresh() {
-        Homey.api('GET', '/media').then(items => {
+        Homey.api('GET', '/media?withData=1').then(items => {
           const root = document.getElementById('files');
           root.innerHTML = '';
           if (!items.length) {
@@ -130,7 +131,9 @@
           for (const it of items) {
             const div = document.createElement('div');
             div.className = 'file';
+            const thumb = it.dataUrl ? '<img src="' + it.dataUrl + '" alt="">' : '';
             div.innerHTML =
+              thumb +
               '<div class="name">' + it.name + '</div>' +
               '<small>' + (it.size / 1024).toFixed(1) + ' KB</small><br/>' +
               '<button data-name="' + it.name + '" class="del">delete</button>';
