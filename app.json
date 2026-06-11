@@ -1055,9 +1055,9 @@
           "nl": "Test kandidaat-AE-sleutel (uit APK)"
         },
         "titleFormatted": {
-          "en": "Test AE key [[key_hex]] against [[device]]",
-          "de": "AE-Key [[key_hex]] gegen [[device]] testen",
-          "nl": "Test AE-sleutel [[key_hex]] tegen [[device]]"
+          "en": "Test AE key [[key_hex]]",
+          "de": "AE-Key [[key_hex]] testen",
+          "nl": "Test AE-sleutel [[key_hex]]"
         },
         "hint": {
           "en": "Paste a 16-byte (32 hex char) candidate key extracted from the iDotMatrix Android APK. The card tries AES-ECB, AES-CBC zero-IV, AES-CMAC and HMAC-SHA256-trunc16 against four small inputs and reports whether any mode's output matches the device's response — that's how we know the key + cipher mode are correct.",
