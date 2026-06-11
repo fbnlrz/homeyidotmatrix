@@ -1048,6 +1048,28 @@
         ]
       },
       {
+        "id": "test_ae_key",
+        "title": {
+          "en": "Test candidate AE key (from APK)",
+          "de": "Kandidaten-AE-Key testen (aus APK)",
+          "nl": "Test kandidaat-AE-sleutel (uit APK)"
+        },
+        "titleFormatted": {
+          "en": "Test AE key [[key_hex]] against [[device]]",
+          "de": "AE-Key [[key_hex]] gegen [[device]] testen",
+          "nl": "Test AE-sleutel [[key_hex]] tegen [[device]]"
+        },
+        "hint": {
+          "en": "Paste a 16-byte (32 hex char) candidate key extracted from the iDotMatrix Android APK. The card tries AES-ECB, AES-CBC zero-IV, AES-CMAC and HMAC-SHA256-trunc16 against four small inputs and reports whether any mode's output matches the device's response — that's how we know the key + cipher mode are correct.",
+          "de": "16-Byte Kandidaten-Key (32 Hex-Zeichen) aus der iDotMatrix-APK einfügen. Die Karte testet AES-ECB, AES-CBC mit Null-IV, AES-CMAC und HMAC-SHA256-trunc16 gegen vier kleine Inputs und meldet ob eine Mode-Antwort mit der Device-Antwort übereinstimmt.",
+          "nl": "Plak een 16-byte (32 hex-tekens) kandidaat-sleutel uit de iDotMatrix-APK. De kaart probeert AES-ECB, AES-CBC nul-IV, AES-CMAC en HMAC-SHA256-trunc16 tegen vier kleine inputs en meldt of een mode-output overeenkomt met het apparaat-antwoord."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" },
+          { "name": "key_hex", "type": "text", "title": { "en": "Key (32 hex chars)", "de": "Key (32 Hex-Zeichen)", "nl": "Sleutel (32 hex-tekens)" }, "placeholder": { "en": "0123456789abcdef0123456789abcdef" } }
+        ]
+      },
+      {
         "id": "probe_ae_determinism",
         "title": {
           "en": "0x00AE determinism + avalanche test (~25 s)",

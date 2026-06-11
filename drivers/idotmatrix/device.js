@@ -420,6 +420,27 @@ class IDMDevice extends Homey.Device {
     return result;
   }
 
+  /**
+   * Verify a candidate AE key (extracted from the iDotMatrix Android APK).
+   * Tries AES-ECB / AES-CBC zero-IV / AES-CMAC / HMAC-SHA256-trunc16 against
+   * a few small fixed inputs. If any match the device's response, the AE
+   * auth is cracked.
+   */
+  async testAeKey(keyHex) {
+    if (!this.client.isConnected()) await this.client.connect();
+    const result = await IDMProbe.testAeKey(this.client, keyHex, {
+      onLog: (...a) => this.log('[ae-key]', ...a),
+    });
+    const json = JSON.stringify(result, null, 2);
+    this.log(`AE key test verdict: ${result.verdict}`);
+    try {
+      await this.setSettings({ ae_probe_result: json });
+    } catch (e) {
+      this.log('Failed to persist AE key test result:', e.message);
+    }
+    return result;
+  }
+
   /** Stage-4 AE probe: determinism + structural patterns + avalanche test (~25 s run). */
   async probeAeDeterminism() {
     if (!this.client.isConnected()) await this.client.connect();
