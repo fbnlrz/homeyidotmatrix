@@ -1048,6 +1048,27 @@
         ]
       },
       {
+        "id": "probe_ae_mapping",
+        "title": {
+          "en": "Map 0x00AE response space (slow, ~70 s)",
+          "de": "0x00AE Antwort-Raum kartieren (langsam, ~70 s)",
+          "nl": "0x00AE responsruimte in kaart brengen (langzaam, ~70 s)"
+        },
+        "titleFormatted": {
+          "en": "Map 0x00AE response space on [[device]] (slow, ~70 s)",
+          "de": "0x00AE Antwort-Raum auf [[device]] kartieren (langsam, ~70 s)",
+          "nl": "0x00AE responsruimte op [[device]] in kaart brengen (langzaam, ~70 s)"
+        },
+        "hint": {
+          "en": "Stage 3 of the 0x00AE reverse-engineering — pool size estimate (30 pings), full 1-byte input map (256 probes), 2-byte input map (256 probes), and capture-then-resend handshake variants. Takes about 70 s. Result lands in device settings.",
+          "de": "Stufe 3 des 0x00AE-Reverse-Engineerings — Pool-Größe (30 Pings), vollständige 1-Byte-Eingabe-Karte (256 Probes), 2-Byte-Karte (256 Probes), Capture-then-Resend-Handshake-Varianten. Dauert ca. 70 s.",
+          "nl": "Fase 3 van de 0x00AE reverse-engineering — pool-grootte (30 pings), volledige 1-byte input-map (256 probes), 2-byte map (256 probes), capture-en-stuur handshake-varianten. Duurt ca. 70 s."
+        },
+        "args": [
+          { "name": "device", "type": "device", "filter": "driver_id=idotmatrix" }
+        ]
+      },
+      {
         "id": "probe_ae_challenge",
         "title": {
           "en": "Deep probe 0x00AE (challenge/auth)",

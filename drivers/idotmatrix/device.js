@@ -420,6 +420,22 @@ class IDMDevice extends Homey.Device {
     return result;
   }
 
+  /** Stage-3 AE probe: pool size + 1B/2B input mapping + handshake followups (~70 s run). */
+  async probeAeMapping() {
+    if (!this.client.isConnected()) await this.client.connect();
+    const result = await IDMProbe.probeAeMapping(this.client, {
+      onLog: (...a) => this.log('[ae-mapping]', ...a),
+    });
+    const json = JSON.stringify(result, null, 2);
+    this.log(`AE mapping done: pool=${result.poolEstimate.uniquePayloads}, 1B-triggers=${result.inputMap.oneByteTriggers.length}, 2B-triggers=${result.inputMap.twoByteTriggers.length}`);
+    try {
+      await this.setSettings({ ae_probe_result: json });
+    } catch (e) {
+      this.log('Failed to persist AE mapping result:', e.message);
+    }
+    return result;
+  }
+
   /** Stage-2 AE probe: classify the challenge as fresh nonce vs fixed value, try auth responses. */
   async probeAeChallenge() {
     if (!this.client.isConnected()) await this.client.connect();
