@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": [
@@ -494,6 +494,101 @@
       ]
     }
   ],
+  "capabilities": {
+    "idm_mode": {
+      "type": "enum",
+      "title": {
+        "en": "Mode",
+        "de": "Modus",
+        "nl": "Modus"
+      },
+      "uiComponent": "picker",
+      "getable": true,
+      "setable": true,
+      "values": [
+        {
+          "id": "clock",
+          "title": {
+            "en": "Clock",
+            "de": "Uhr",
+            "nl": "Klok"
+          }
+        },
+        {
+          "id": "countdown",
+          "title": {
+            "en": "Countdown (5 min)",
+            "de": "Countdown (5 Min)",
+            "nl": "Countdown (5 min)"
+          }
+        },
+        {
+          "id": "scoreboard",
+          "title": {
+            "en": "Scoreboard 0:0",
+            "de": "Scoreboard 0:0",
+            "nl": "Scorebord 0:0"
+          }
+        },
+        {
+          "id": "chronograph",
+          "title": {
+            "en": "Stopwatch",
+            "de": "Stoppuhr",
+            "nl": "Stopwatch"
+          }
+        },
+        {
+          "id": "rainbow_h",
+          "title": {
+            "en": "Rainbow (horizontal)",
+            "de": "Regenbogen (horizontal)",
+            "nl": "Regenboog (horizontaal)"
+          }
+        },
+        {
+          "id": "rainbow_v",
+          "title": {
+            "en": "Rainbow (vertical)",
+            "de": "Regenbogen (vertikal)",
+            "nl": "Regenboog (verticaal)"
+          }
+        },
+        {
+          "id": "random_px",
+          "title": {
+            "en": "Random pixels",
+            "de": "Zufalls-Pixel",
+            "nl": "Willekeurige pixels"
+          }
+        },
+        {
+          "id": "color",
+          "title": {
+            "en": "Solid color",
+            "de": "Einfarbig",
+            "nl": "Effen kleur"
+          }
+        },
+        {
+          "id": "music_sync",
+          "title": {
+            "en": "Music sync (mic)",
+            "de": "Music-Sync (Mikro)",
+            "nl": "Music-sync (mic)"
+          }
+        },
+        {
+          "id": "test",
+          "title": {
+            "en": "Test pattern",
+            "de": "Test-Muster",
+            "nl": "Testpatroon"
+          }
+        }
+      ]
+    }
+  },
   "flow": {
     "triggers": [
       {
