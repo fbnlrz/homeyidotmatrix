@@ -156,7 +156,7 @@ module.exports = {
     return { device: dev.getName(), steps };
   },
 
-  async fontGlyphs({ homey }) {
+  async fontGlyphs() {
     const Font = require('./lib/font8x16');
     const out = {};
     for (const code of Object.keys(Font)) {
@@ -166,6 +166,20 @@ module.exports = {
       out[String.fromCharCode(parseInt(code, 10))] = Array.from(buf);
     }
     return out;
+  },
+
+  /**
+   * Configure the remote sticker pack URL. Pass an empty string to clear.
+   * The StickerPack hot-swaps without an app restart.
+   */
+  async setStickerRemoteUrl({ homey, body }) {
+    const url = body && typeof body.url === 'string' ? body.url.trim() : '';
+    homey.settings.set('remote_sticker_url', url || null);
+    return { ok: true, url: url || null };
+  },
+
+  async getStickerRemoteUrl({ homey }) {
+    return { url: homey.settings.get('remote_sticker_url') || null };
   },
 
   async previewPixelArt({ homey, body }) {

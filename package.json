@@ -8,7 +8,8 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "node test/IDMProtocol.test.js && node test/IDMClient.reconnect.test.js && node test/sun.test.js"
+    "test": "node test/IDMProtocol.test.js && node test/IDMClient.reconnect.test.js && node test/sun.test.js",
+    "lint": "eslint app.js api.js lib/ drivers/ test/"
   },
   "dependencies": {
     "crc": "^4.3.2",
@@ -17,6 +18,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "eslint": "^8.57.1",
     "homey": "^3.12.2"
   }
 }

@@ -19,6 +19,18 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
 
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+
   validate:
     name: homey app validate
     runs-on: ubuntu-latest

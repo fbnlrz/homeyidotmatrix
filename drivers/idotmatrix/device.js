@@ -141,6 +141,20 @@ class IDMDevice extends Homey.Device {
   }
 
   /**
+   * Per-device theme. Flow card arguments still win — this is the fallback
+   * when no color was passed. Returns a stable object even when settings are
+   * empty, so callers can do `const { fg } = this._theme()`.
+   */
+  _theme() {
+    const get = (key, fallback) => (this.getSetting(key) || '').trim() || fallback;
+    return {
+      fg: get('default_color', '#ffffff'),
+      bg: get('default_background', '#000000'),
+      accent: get('default_accent', '#ffaa00'),
+    };
+  }
+
+  /**
    * BLE upload throughput probe. Sends a fixed sequence of write-without-
    * response writes, measures total time, returns bytes/sec.
    */
@@ -267,7 +281,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Blink between color and black `times` cycles. */
-  async flash({ color = '#ffffff', times = 5, onMs = 150, offMs = 150 } = {}) {
+  async flash(opts = {}) {
+    const theme = this._theme();
+    const { color = theme.fg, times = 5, onMs = 150, offMs = 150 } = opts;
     const c = _parseColor(color);
     for (let i = 0; i < times; i++) {
       await this.client.write(IDMProtocol.buildFullscreenColor(c.r, c.g, c.b));
@@ -285,7 +301,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** "It is twenty past seven" style time in EN/DE/NL. */
-  async showWordClock({ locale = 'en', color = '#ffffff', mode = 1, mirror = false } = {}) {
+  async showWordClock(opts = {}) {
+    const theme = this._theme();
+    const { locale = 'en', color = theme.fg, mode = 1, mirror = false } = opts;
     const text = WordClock.format(locale, new Date());
     await this.showText(text, { color, mode, speed: 90, mirror });
   }
@@ -337,7 +355,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Show 2-3 lines of text statically stacked (rendered as a PNG image). */
-  async showMultilineText(lines, { color = '#ffffff', background = '#000000' } = {}) {
+  async showMultilineText(lines, opts = {}) {
+    const theme = this._theme();
+    const { color = theme.fg, background = theme.bg } = opts;
     const size = this._pixelSize();
     const png = await _renderMultilinePng(size, lines.filter(Boolean), _parseColor(color), _parseColor(background));
     await this.showImage(png);
@@ -348,13 +368,14 @@ class IDMDevice extends Homey.Device {
    * notification badges, queue counts, alarm totals etc. Numbers >999 are
    * rendered as "999+" to keep them legible at 16/32 pixels.
    */
-  async showNotificationCount(count, label = '', color = '#ffaa00') {
+  async showNotificationCount(count, label = '', color) {
+    const fg = color || this._theme().accent;
     const num = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
     const text = num > 999 ? '999+' : String(num);
     const lines = label && String(label).trim()
       ? [text, String(label).trim()]
       : [text];
-    await this.showMultilineText(lines, { color, background: '#000000' });
+    await this.showMultilineText(lines, { color: fg, background: this._theme().bg });
   }
 
   /**
@@ -363,8 +384,10 @@ class IDMDevice extends Homey.Device {
    * per pixel — typical URLs (~30 chars) fit nicely on a 32×32 display, and
    * 64×64 leaves room for longer payloads.
    */
-  async showQrCode(text, { foreground = '#ffffff', background = '#000000' } = {}) {
+  async showQrCode(text, opts = {}) {
     const QRCode = require('qrcode');
+    const theme = this._theme();
+    const { foreground = theme.fg, background = theme.bg } = opts;
     const size = this._pixelSize();
     if (!text || !String(text).trim()) throw new Error('QR text is empty');
     // Try error-correction levels from L → H; pick the largest level that
@@ -390,7 +413,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Show the current date in the given format. */
-  async showDate({ format = 'dd.MM', color = '#ffffff', mode = 0, mirror = false, locale = 'en' } = {}) {
+  async showDate(opts = {}) {
+    const theme = this._theme();
+    const { format = 'dd.MM', color = theme.fg, mode = 0, mirror = false, locale = 'en' } = opts;
     const text = _formatDate(new Date(), format, locale);
     if (mode === 0) {
       // Static — render as PNG so it doesn't scroll
@@ -401,7 +426,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Show a countdown to a future ISO timestamp. */
-  async showCountdownTo({ targetIso, label = '', color = '#ffffff', mode = 1, mirror = false } = {}) {
+  async showCountdownTo(opts = {}) {
+    const theme = this._theme();
+    const { targetIso, label = '', color = theme.fg, mode = 1, mirror = false } = opts;
     const t = new Date(targetIso);
     if (!Number.isFinite(t.getTime())) throw new Error('invalid target time');
     const text = _formatTimeUntil(t, label);
@@ -593,7 +620,9 @@ class IDMDevice extends Homey.Device {
     });
   }
 
-  async showClock({ style = 0, showDate = true, hour24 = true, color = '#ffffff' } = {}) {
+  async showClock(opts = {}) {
+    const theme = this._theme();
+    const { style = 0, showDate = true, hour24 = true, color = theme.fg } = opts;
     const { r, g, b } = _parseColor(color);
     try { await this.client.write(IDMProtocol.buildSetTime(new Date())); } catch (e) { /* ignore */ }
     await this.client.write(IDMProtocol.buildClock({

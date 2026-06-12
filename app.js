@@ -1,13 +1,11 @@
 'use strict';
 
 const Homey = require('homey');
-const path = require('path');
 const MediaStore = require('./lib/MediaStore');
 const RemoteMediaIndex = require('./lib/RemoteMediaIndex');
 const StickerPack = require('./lib/StickerPack');
 const ActivityLog = require('./lib/ActivityLog');
 const FlowStats = require('./lib/FlowStats');
-const Font = require('./lib/font8x16');
 const { ImagePipeline, isGif } = require('./lib/ImagePipeline');
 const DiagnosticBundle = require('./lib/DiagnosticBundle');
 
@@ -38,11 +36,21 @@ class IDMApp extends Homey.App {
       this.log('upload media via:  POST http://<homey-ip>/api/app/com.idotmatrix/media/<filename>');
     }
 
-    this.stickers = new StickerPack(__dirname);
+    this.stickers = new StickerPack(__dirname, {
+      remoteUrl: this.homey.settings.get('remote_sticker_url') || null,
+    });
+    // React to URL changes from the settings page without a full app restart.
+    this.homey.settings.on('set', key => {
+      if (key !== 'remote_sticker_url') return;
+      const url = this.homey.settings.get('remote_sticker_url') || null;
+      this.stickers.setRemoteUrl(url);
+      this.log(`sticker remote url updated → ${url || '(none)'}`);
+    });
     this.activity = new ActivityLog(50);
     this.flowStats = new FlowStats();
     const stickerList = await this.stickers.list();
-    this.log(`sticker pack: ${stickerList.length} bundled assets`);
+    const remoteCount = stickerList.filter(s => s.source === 'remote').length;
+    this.log(`sticker pack: ${stickerList.length} total (${remoteCount} remote)`);
 
     this.imagePipeline = new ImagePipeline({ logger: (...a) => this.log('[pipeline]', ...a) });
 
@@ -73,6 +81,12 @@ class IDMApp extends Homey.App {
         // Property locked by the SDK — skip silently.
       }
     }
+  }
+
+  /** All currently paired iDotMatrix devices. Used by broadcast cards. */
+  _allIdmDevices() {
+    const driver = this.homey.drivers.getDriver('idotmatrix');
+    return driver ? driver.getDevices() : [];
   }
 
   _registerFlowActions() {
@@ -180,6 +194,35 @@ class IDMApp extends Homey.App {
         background: args.background || '#000000',
       });
       this.activity.add({ device: args.device.getName(), type: 'qr', text: String(args.text || '').slice(0, 40) });
+    });
+
+    // Group-broadcast cards: fire the same content to every paired iDotMatrix
+    // in parallel via Promise.allSettled, so one disconnected display doesn't
+    // skip the rest. No `device` arg — these are app-level cards.
+    this.homey.flow.getActionCard('broadcast_text').registerRunListener(async args => {
+      const devices = this._allIdmDevices();
+      if (!devices.length) throw new Error('no iDotMatrix displays paired');
+      const res = await Promise.allSettled(devices.map(d => d.showText(args.text, {
+        color: args.color, mode: parseInt(args.mode, 10), speed: 95, mirror: false, colorMode: 1,
+      })));
+      this.flowStats.record('broadcast_text', res.every(r => r.status === 'fulfilled'));
+      this.activity.add({ device: '*', type: 'broadcast_text', text: String(args.text || '').slice(0, 40) });
+    });
+
+    this.homey.flow.getActionCard('broadcast_animation').registerRunListener(async args => {
+      const devices = this._allIdmDevices();
+      if (!devices.length) throw new Error('no iDotMatrix displays paired');
+      const res = await Promise.allSettled(devices.map(d => d.showAnimation(args.animation)));
+      this.flowStats.record('broadcast_animation', res.every(r => r.status === 'fulfilled'));
+      this.activity.add({ device: '*', type: 'broadcast_anim', name: String(args.animation || '') });
+    });
+
+    this.homey.flow.getActionCard('broadcast_effect').registerRunListener(async args => {
+      const devices = this._allIdmDevices();
+      if (!devices.length) throw new Error('no iDotMatrix displays paired');
+      const style = parseInt(args.style, 10);
+      const res = await Promise.allSettled(devices.map(d => d.showEffect(style)));
+      this.flowStats.record('broadcast_effect', res.every(r => r.status === 'fulfilled'));
     });
 
     fire('show_for_seconds', async args => {

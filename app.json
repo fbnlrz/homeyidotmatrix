@@ -99,6 +99,14 @@
       "method": "POST",
       "path": "/preview-pixel-art"
     },
+    "setStickerRemoteUrl": {
+      "method": "POST",
+      "path": "/stickers/remote-url"
+    },
+    "getStickerRemoteUrl": {
+      "method": "GET",
+      "path": "/stickers/remote-url"
+    },
     "previewAnimation": {
       "method": "POST",
       "path": "/preview-animation/:name"
@@ -250,6 +258,36 @@
                 "en": "Used when a Flow card doesn't specify a color. Hex format, e.g. #ff3366. Leave empty for white.",
                 "de": "Wird verwendet wenn eine Flow-Karte keine Farbe angibt. Hex-Format, z.B. #ff3366. Leer = weiß.",
                 "nl": "Gebruikt wanneer een Flow-kaart geen kleur opgeeft. Hex-formaat, bijv. #ff3366. Leeg = wit."
+              }
+            },
+            {
+              "id": "default_background",
+              "type": "text",
+              "label": {
+                "en": "Default background (hex)",
+                "de": "Standard-Hintergrund (Hex)",
+                "nl": "Standaard achtergrond (hex)"
+              },
+              "value": "",
+              "hint": {
+                "en": "Background for multiline text, countdowns and date displays when no Flow argument provides one. Empty = black.",
+                "de": "Hintergrund für mehrzeiligen Text, Countdowns und Datumsanzeigen wenn keine Flow-Karte einen vorgibt. Leer = schwarz.",
+                "nl": "Achtergrond voor meerregelige tekst, countdowns en datumweergaven wanneer geen Flow-argument er een opgeeft. Leeg = zwart."
+              }
+            },
+            {
+              "id": "default_accent",
+              "type": "text",
+              "label": {
+                "en": "Default accent color (hex)",
+                "de": "Standard-Akzentfarbe (Hex)",
+                "nl": "Standaard accentkleur (hex)"
+              },
+              "value": "",
+              "hint": {
+                "en": "Used for highlights — countdown digits past zero, progress-bar fill, status warnings. Empty = display orange.",
+                "de": "Wird für Akzente verwendet — Countdown-Stellen nach Null, Fortschrittsbalken, Statushinweise. Leer = Orange.",
+                "nl": "Wordt gebruikt voor accenten — countdown-cijfers na nul, voortgangsbalk, statuswaarschuwingen. Leeg = oranje."
               }
             },
             {
@@ -1587,9 +1625,9 @@
           "es": "Mostrar código QR"
         },
         "titleFormatted": {
-          "en": "Show QR code for [[text]]",
-          "de": "QR-Code für [[text]] zeigen",
-          "nl": "QR-code voor [[text]] tonen"
+          "en": "Show QR code for [[text]] in [[color]] on [[background]]",
+          "de": "QR-Code für [[text]] in [[color]] auf [[background]] zeigen",
+          "nl": "QR-code voor [[text]] in [[color]] op [[background]] tonen"
         },
         "hint": {
           "en": "Render the given text as a QR code at the display's native resolution. Practical for short URLs, Wi-Fi credentials (WIFI:S:<ssid>;T:WPA;P:<pw>;;) or contact strings. Longer payloads need a 64×64 display.",
@@ -1750,6 +1788,87 @@
               "de": "Bild-URL",
               "nl": "Afbeelding-URL"
             }
+          }
+        ]
+      },
+      {
+        "id": "broadcast_text",
+        "title": {
+          "en": "Broadcast text to ALL displays",
+          "de": "Text auf ALLEN Displays anzeigen",
+          "nl": "Tekst naar ALLE displays sturen"
+        },
+        "titleFormatted": {
+          "en": "Show [[text]] in [[color]] on all displays ([[mode]])",
+          "de": "[[text]] in [[color]] auf allen Displays zeigen ([[mode]])",
+          "nl": "Toon [[text]] in [[color]] op alle displays ([[mode]])"
+        },
+        "hint": {
+          "en": "Fires the same scrolling text on every paired iDotMatrix display in parallel. A disconnected display fails silently — the others still run.",
+          "de": "Schickt den gleichen Lauftext parallel an alle gekoppelten Displays. Ein nicht verbundenes Display schlägt still fehl — die anderen laufen weiter."
+        },
+        "args": [
+          { "name": "text", "type": "text", "title": { "en": "Text", "de": "Text", "nl": "Tekst" } },
+          { "name": "color", "type": "color", "title": { "en": "Color", "de": "Farbe", "nl": "Kleur" } },
+          {
+            "name": "mode",
+            "type": "dropdown",
+            "title": { "en": "Mode", "de": "Modus", "nl": "Modus" },
+            "values": [
+              { "id": "0", "label": { "en": "Static centered", "de": "Statisch zentriert", "nl": "Statisch gecentreerd" } },
+              { "id": "1", "label": { "en": "Scroll right→left", "de": "Scroll rechts→links", "nl": "Scroll rechts→links" } },
+              { "id": "2", "label": { "en": "Scroll left→right", "de": "Scroll links→rechts", "nl": "Scroll links→rechts" } }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "broadcast_animation",
+        "title": {
+          "en": "Broadcast animation to ALL displays",
+          "de": "Animation auf ALLEN Displays zeigen",
+          "nl": "Animatie naar ALLE displays sturen"
+        },
+        "titleFormatted": {
+          "en": "Show animation [[animation]] on all displays",
+          "de": "Animation [[animation]] auf allen Displays zeigen",
+          "nl": "Toon animatie [[animation]] op alle displays"
+        },
+        "args": [
+          {
+            "name": "animation",
+            "type": "text",
+            "title": { "en": "Animation name", "de": "Animations-Name", "nl": "Animatienaam" },
+            "placeholder": { "en": "plasma | fireworks | snake | matrixRain …", "de": "plasma | fireworks | snake | matrixRain …", "nl": "plasma | fireworks | snake | matrixRain …" }
+          }
+        ]
+      },
+      {
+        "id": "broadcast_effect",
+        "title": {
+          "en": "Broadcast effect to ALL displays",
+          "de": "Effekt auf ALLEN Displays zeigen",
+          "nl": "Effect naar ALLE displays sturen"
+        },
+        "titleFormatted": {
+          "en": "Show effect [[style]] on all displays",
+          "de": "Effekt [[style]] auf allen Displays zeigen",
+          "nl": "Toon effect [[style]] op alle displays"
+        },
+        "args": [
+          {
+            "name": "style",
+            "type": "dropdown",
+            "title": { "en": "Effect", "de": "Effekt", "nl": "Effect" },
+            "values": [
+              { "id": "0", "label": { "en": "Horizontal rainbow", "de": "Horizontaler Regenbogen", "nl": "Horizontale regenboog" } },
+              { "id": "1", "label": { "en": "Random pixels (color)", "de": "Zufallspixel (Farbe)", "nl": "Willekeurige pixels (kleur)" } },
+              { "id": "2", "label": { "en": "Random pixels (white)", "de": "Zufallspixel (weiß)", "nl": "Willekeurige pixels (wit)" } },
+              { "id": "3", "label": { "en": "Vertical rainbow", "de": "Vertikaler Regenbogen", "nl": "Verticale regenboog" } },
+              { "id": "4", "label": { "en": "Diagonal rainbow ↗", "de": "Diagonaler Regenbogen ↗", "nl": "Diagonale regenboog ↗" } },
+              { "id": "5", "label": { "en": "Diagonal rainbow ↘", "de": "Diagonaler Regenbogen ↘", "nl": "Diagonale regenboog ↘" } },
+              { "id": "6", "label": { "en": "Random colored pixels", "de": "Zufällige farbige Pixel", "nl": "Willekeurige gekleurde pixels" } }
+            ]
           }
         ]
       },
