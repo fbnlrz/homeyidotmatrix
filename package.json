@@ -8,7 +8,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "node test/IDMProtocol.test.js && node test/IDMClient.reconnect.test.js"
+    "test": "node test/IDMProtocol.test.js && node test/IDMClient.reconnect.test.js && node test/sun.test.js"
   },
   "dependencies": {
     "crc": "^4.3.2",

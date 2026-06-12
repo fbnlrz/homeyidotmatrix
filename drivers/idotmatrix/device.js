@@ -5,6 +5,7 @@ const IDMProtocol = require('../../lib/IDMProtocol');
 const IDMClient = require('../../lib/IDMClient');
 const IDMProbe = require('../../lib/IDMProbe');
 const Heartbeat = require('../../lib/Heartbeat');
+const HealthCheck = require('../../lib/HealthCheck');
 const RssiHistory = require('../../lib/RssiHistory');
 const Playlist = require('../../lib/Playlist');
 const WordClock = require('../../lib/WordClock');
@@ -36,12 +37,13 @@ class IDMDevice extends Homey.Device {
       onLog: (...a) => this.log(...a),
       onConnected: () => this._onClientConnected(),
       onDisconnected: () => this._onClientDisconnected(),
+      defaultWaitConnectedMs: this._waitConnectedMsFromSetting(),
     });
 
     // Migrate existing paired devices: newly-introduced capabilities have to
     // be added explicitly, otherwise the device card stays on the old layout
     // (just onoff was the symptom in v0.8.0).
-    for (const cap of ['light_hue', 'light_saturation', 'idm_mode']) {
+    for (const cap of ['light_hue', 'light_saturation', 'idm_mode', 'measure_signal_strength']) {
       if (!this.hasCapability(cap)) {
         try { await this.addCapability(cap); }
         catch (e) { this.log('addCapability failed for', cap, ':', e.message); }
@@ -98,6 +100,13 @@ class IDMDevice extends Homey.Device {
       device: this, client: this.client, onLog: (...a) => this.log(...a),
     });
     this.screensaver.start();
+
+    this.healthcheck = new HealthCheck({
+      device: this, client: this.client,
+      intervalMs: 60 * 60 * 1000,
+      onLog: (...a) => this.log(...a),
+    });
+    this.healthcheck.start();
   }
 
   /** Called by every user-initiated content method to reset the idle clock. */
@@ -118,6 +127,10 @@ class IDMDevice extends Homey.Device {
       if (typeof rssi === 'number') {
         if (this.rssiHistory) this.rssiHistory.push(rssi);
         await this.setSettings({ last_rssi: `${rssi} dBm` }).catch(() => {});
+        // Mirror onto the capability so Homey Insights can graph it.
+        if (this.hasCapability('measure_signal_strength')) {
+          await this.setCapabilityValue('measure_signal_strength', rssi).catch(() => {});
+        }
       }
     } catch (e) { /* ignore */ }
   }
@@ -328,6 +341,20 @@ class IDMDevice extends Homey.Device {
     const size = this._pixelSize();
     const png = await _renderMultilinePng(size, lines.filter(Boolean), _parseColor(color), _parseColor(background));
     await this.showImage(png);
+  }
+
+  /**
+   * Show a big number with an optional short label below — designed for
+   * notification badges, queue counts, alarm totals etc. Numbers >999 are
+   * rendered as "999+" to keep them legible at 16/32 pixels.
+   */
+  async showNotificationCount(count, label = '', color = '#ffaa00') {
+    const num = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    const text = num > 999 ? '999+' : String(num);
+    const lines = label && String(label).trim()
+      ? [text, String(label).trim()]
+      : [text];
+    await this.showMultilineText(lines, { color, background: '#000000' });
   }
 
   /** Show the current date in the given format. */
@@ -617,6 +644,13 @@ class IDMDevice extends Homey.Device {
     if (changedKeys.includes('flip') && this.client.isConnected()) {
       await this.client.write(IDMProtocol.buildFlip(!!newSettings.flip));
     }
+    if (changedKeys.includes('fast_fail') && this.client) {
+      this.client._defaultWaitConnectedMs = newSettings.fast_fail ? 2000 : 15000;
+    }
+  }
+
+  _waitConnectedMsFromSetting() {
+    return this.getSetting('fast_fail') ? 2000 : 15000;
   }
 
   async onDeleted() {
@@ -641,6 +675,7 @@ class IDMDevice extends Homey.Device {
     if (this.heartbeat) this.heartbeat.stop();
     if (this.brightnessCurve) this.brightnessCurve.stop();
     if (this.screensaver) this.screensaver.stop();
+    if (this.healthcheck) this.healthcheck.stop();
     if (this._rssiTimer) { this.homey.clearInterval(this._rssiTimer); this._rssiTimer = null; }
     try { if (this.client) await this.client.disconnect(); } catch (e) { /* ignore */ }
   }

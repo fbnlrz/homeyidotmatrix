@@ -165,6 +165,15 @@ class IDMApp extends Homey.App {
       );
     });
 
+    fire('show_notification_count', async args => {
+      await args.device.showNotificationCount(
+        parseInt(args.count, 10),
+        args.label || '',
+        args.color || '#ffaa00',
+      );
+      this.activity.add({ device: args.device.getName(), type: 'count', text: `${args.count} ${args.label || ''}`.trim() });
+    });
+
     fire('show_for_seconds', async args => {
       await args.device.showTemporarily(
         () => args.device.showText(args.text, { color: args.color, mode: 1, speed: 95 }),
@@ -450,6 +459,19 @@ class IDMApp extends Homey.App {
       const threshold = parseFloat(args.percent) / 100;
       return typeof dim === 'number' && dim > threshold;
     });
+    card('time_in_window').registerRunListener(async args => {
+      // Homey passes time-type args as "HH:MM" strings (24h, local). The
+      // window may wrap past midnight (e.g. 22:00 → 06:00) — handled by
+      // the OR branch.
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      const start = _parseHHMM(args.start);
+      const end = _parseHHMM(args.end);
+      if (start === null || end === null) return false;
+      return start <= end
+        ? (minutes >= start && minutes < end)
+        : (minutes >= start || minutes < end);
+    });
   }
 
   /**
@@ -551,6 +573,17 @@ function _formatValue(value, decimals) {
   if (Number.isFinite(n) && Number.isFinite(d) && d >= 0) return n.toFixed(d);
   if (Number.isFinite(n)) return String(n);
   return String(value ?? '');
+}
+
+/** Parse "HH:MM" → minutes since midnight, or null on bad input. */
+function _parseHHMM(s) {
+  if (typeof s !== 'string') return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  if (!(h >= 0 && h < 24) || !(mm >= 0 && mm < 60)) return null;
+  return h * 60 + mm;
 }
 
 module.exports = IDMApp;

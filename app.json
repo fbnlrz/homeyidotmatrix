@@ -155,7 +155,8 @@
         "dim",
         "light_hue",
         "light_saturation",
-        "light_mode"
+        "light_mode",
+        "measure_signal_strength"
       ],
       "platforms": [
         "local"
@@ -249,6 +250,21 @@
                 "en": "Used when a Flow card doesn't specify a color. Hex format, e.g. #ff3366. Leave empty for white.",
                 "de": "Wird verwendet wenn eine Flow-Karte keine Farbe angibt. Hex-Format, z.B. #ff3366. Leer = weiß.",
                 "nl": "Gebruikt wanneer een Flow-kaart geen kleur opgeeft. Hex-formaat, bijv. #ff3366. Leeg = wit."
+              }
+            },
+            {
+              "id": "fast_fail",
+              "type": "checkbox",
+              "label": {
+                "en": "Fast-fail Flow cards while disconnected",
+                "de": "Flow-Karten bei getrenntem Display schnell abbrechen",
+                "nl": "Flow-kaarten snel afbreken bij losgekoppeld display"
+              },
+              "value": false,
+              "hint": {
+                "en": "When on, Flow actions return a clear error after 2s if the display is unreachable instead of blocking for 15s while the background reconnect keeps trying. Use this if you run many Flows and prefer a noisy failure over a slow Flow.",
+                "de": "Wenn aktiv, brechen Flow-Aktionen nach 2s mit klarer Fehlermeldung ab, falls das Display nicht erreichbar ist, statt 15s zu blockieren während der Hintergrund-Reconnect läuft. Sinnvoll bei vielen Flows, wenn lieber laute Fehler statt langsame Flows.",
+                "nl": "Wanneer aan, geven Flow-acties na 2s een duidelijke fout als het display onbereikbaar is, in plaats van 15s te blokkeren terwijl de achtergrond-reconnect doorgaat. Handig bij veel Flows als luide fouten beter zijn dan trage Flows."
               }
             }
           ]
@@ -377,6 +393,21 @@
                 "en": "Enable automatic brightness",
                 "de": "Auto-Helligkeit aktivieren",
                 "nl": "Auto-helderheid inschakelen"
+              },
+              "value": false
+            },
+            {
+              "id": "curve_use_sun",
+              "type": "checkbox",
+              "label": {
+                "en": "Use sunrise / sunset",
+                "de": "Sonnenaufgang / -untergang nutzen",
+                "nl": "Gebruik zonsopgang / zonsondergang"
+              },
+              "hint": {
+                "en": "When enabled, the day window follows the locally computed sunrise/sunset (requires Homey location). The fixed times below are ignored.",
+                "de": "Wenn aktiviert, folgt das Tagfenster Sonnenaufgang/-untergang (benötigt Homey-Standort). Die festen Zeiten unten werden ignoriert.",
+                "nl": "Wanneer aan, volgt het dagvenster lokaal berekende zonsopgang/-ondergang (Homey-locatie vereist). De vaste tijden hieronder worden genegeerd."
               },
               "value": false
             },
@@ -528,6 +559,31 @@
                 "nl": "Laatste verbreekreden"
               },
               "value": "—"
+            },
+            {
+              "id": "last_healthcheck_at",
+              "type": "text",
+              "label": {
+                "en": "Last healthcheck at",
+                "de": "Letzter Gesundheitscheck",
+                "nl": "Laatste gezondheidscheck"
+              },
+              "value": "—"
+            },
+            {
+              "id": "last_healthcheck_status",
+              "type": "text",
+              "label": {
+                "en": "Last healthcheck result",
+                "de": "Letztes Healthcheck-Ergebnis",
+                "nl": "Laatste healthcheck-resultaat"
+              },
+              "value": "—",
+              "hint": {
+                "en": "Hourly self-test result. OK = link healthy. WARN = ack slow or weak signal. FAIL = ack timed out or write rejected.",
+                "de": "Stündlicher Selbsttest. OK = Verbindung gesund. WARN = Ack langsam oder schwaches Signal. FAIL = Ack-Timeout oder Write abgelehnt.",
+                "nl": "Uurlijkse zelftest. OK = link gezond. WARN = ack langzaam of zwak signaal. FAIL = ack-timeout of write geweigerd."
+              }
             }
           ]
         }
@@ -535,6 +591,25 @@
     }
   ],
   "capabilities": {
+    "measure_signal_strength": {
+      "type": "number",
+      "title": {
+        "en": "BLE signal strength",
+        "de": "BLE-Signalstärke",
+        "nl": "BLE-signaalsterkte"
+      },
+      "units": {
+        "en": "dBm",
+        "de": "dBm",
+        "nl": "dBm"
+      },
+      "decimals": 0,
+      "icon": "/assets/icon.svg",
+      "uiComponent": "sensor",
+      "getable": true,
+      "setable": false,
+      "insights": true
+    },
     "idm_mode": {
       "type": "enum",
       "title": {
@@ -680,6 +755,44 @@
             "name": "device",
             "type": "device",
             "filter": "driver_id=idotmatrix"
+          }
+        ]
+      },
+      {
+        "id": "time_in_window",
+        "title": {
+          "en": "Time !{{is|isn't}} within window",
+          "de": "Uhrzeit !{{ist|ist nicht}} im Zeitfenster",
+          "nl": "Tijd !{{is|is niet}} in venster"
+        },
+        "titleFormatted": {
+          "en": "Time !{{is|isn't}} between [[start]] and [[end]]",
+          "de": "Uhrzeit !{{ist|ist nicht}} zwischen [[start]] und [[end]]",
+          "nl": "Tijd !{{is|is niet}} tussen [[start]] en [[end]]"
+        },
+        "hint": {
+          "en": "Pure-logic guard. Use before a notification action to silence the display at night. Times are local. The window may wrap past midnight (e.g. 22:00 to 06:00).",
+          "de": "Reine Logik-Bedingung. Vor eine Notification-Aktion setzen, damit das Display nachts ruhig bleibt. Zeiten sind lokal. Das Fenster darf Mitternacht überschreiten (z.B. 22:00 bis 06:00).",
+          "nl": "Pure logica-voorwaarde. Plaats vóór een meldingsactie om het scherm 's nachts stil te houden. Tijden zijn lokaal. Het venster mag middernacht overschrijden (bv. 22:00 tot 06:00)."
+        },
+        "args": [
+          {
+            "name": "start",
+            "type": "time",
+            "title": {
+              "en": "Start (HH:MM)",
+              "de": "Start (HH:MM)",
+              "nl": "Start (HH:MM)"
+            }
+          },
+          {
+            "name": "end",
+            "type": "time",
+            "title": {
+              "en": "End (HH:MM)",
+              "de": "Ende (HH:MM)",
+              "nl": "Eind (HH:MM)"
+            }
           }
         ]
       },
@@ -1399,6 +1512,67 @@
               "en": "Background",
               "de": "Hintergrund",
               "nl": "Achtergrond"
+            }
+          }
+        ]
+      },
+      {
+        "id": "show_notification_count",
+        "title": {
+          "en": "Show notification count",
+          "de": "Benachrichtigungs-Zähler zeigen",
+          "nl": "Toon meldingen-teller"
+        },
+        "titleFormatted": {
+          "en": "Show count [[count]] with label [[label]] in [[color]]",
+          "de": "Zähler [[count]] mit Label [[label]] in [[color]] zeigen",
+          "nl": "Toon teller [[count]] met label [[label]] in [[color]]"
+        },
+        "hint": {
+          "en": "Wire any numeric Homey token (unread messages, alerts, queue size) into Count. The display shows the number large with an optional short label below.",
+          "de": "Verbinde einen numerischen Homey-Token (ungelesene Nachrichten, Alarme, Queue-Größe) mit Zähler. Die Anzeige zeigt die Zahl groß mit optionalem kurzem Label darunter.",
+          "nl": "Verbind een numerieke Homey-token (ongelezen berichten, alarmen, wachtrij) met Teller. Het display toont het getal groot met optioneel een korte label eronder."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=idotmatrix"
+          },
+          {
+            "name": "count",
+            "type": "number",
+            "title": {
+              "en": "Count",
+              "de": "Zähler",
+              "nl": "Teller"
+            },
+            "min": 0,
+            "max": 9999,
+            "step": 1
+          },
+          {
+            "name": "label",
+            "type": "text",
+            "title": {
+              "en": "Label",
+              "de": "Label",
+              "nl": "Label"
+            },
+            "placeholder": {
+              "en": "msgs",
+              "de": "Msg",
+              "nl": "msgs"
+            },
+            "required": false
+          },
+          {
+            "name": "color",
+            "type": "color",
+            "title": {
+              "en": "Color",
+              "de": "Farbe",
+              "nl": "Kleur"
             }
           }
         ]
