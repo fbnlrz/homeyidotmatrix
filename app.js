@@ -174,6 +174,14 @@ class IDMApp extends Homey.App {
       this.activity.add({ device: args.device.getName(), type: 'count', text: `${args.count} ${args.label || ''}`.trim() });
     });
 
+    fire('show_qr_code', async args => {
+      await args.device.showQrCode(args.text, {
+        foreground: args.color || '#ffffff',
+        background: args.background || '#000000',
+      });
+      this.activity.add({ device: args.device.getName(), type: 'qr', text: String(args.text || '').slice(0, 40) });
+    });
+
     fire('show_for_seconds', async args => {
       await args.device.showTemporarily(
         () => args.device.showText(args.text, { color: args.color, mode: 1, speed: 95 }),

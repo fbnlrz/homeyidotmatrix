@@ -357,6 +357,38 @@ class IDMDevice extends Homey.Device {
     await this.showMultilineText(lines, { color, background: '#000000' });
   }
 
+  /**
+   * Render a QR code at the device's native pixel resolution and show it.
+   * Auto-picks the error-correction level so the smallest QR fits 1 module
+   * per pixel — typical URLs (~30 chars) fit nicely on a 32×32 display, and
+   * 64×64 leaves room for longer payloads.
+   */
+  async showQrCode(text, { foreground = '#ffffff', background = '#000000' } = {}) {
+    const QRCode = require('qrcode');
+    const size = this._pixelSize();
+    if (!text || !String(text).trim()) throw new Error('QR text is empty');
+    // Try error-correction levels from L → H; pick the largest level that
+    // still produces a QR with version ≤ size (1 module/pixel). qrcode lib
+    // auto-picks the smallest version that fits the text at the given ECC.
+    const candidates = ['H', 'Q', 'M', 'L'];
+    let buf = null;
+    for (const ecc of candidates) {
+      try {
+        const png = await QRCode.toBuffer(String(text), {
+          type: 'png',
+          errorCorrectionLevel: ecc,
+          margin: 1,
+          width: size,
+          color: { dark: foreground, light: background },
+        });
+        buf = png;
+        break;
+      } catch (e) { /* text doesn't fit at this ECC, try lower */ }
+    }
+    if (!buf) throw new Error(`QR payload too long for ${size}×${size} display`);
+    await this.showImage(buf);
+  }
+
   /** Show the current date in the given format. */
   async showDate({ format = 'dd.MM', color = '#ffffff', mode = 0, mirror = false, locale = 'en' } = {}) {
     const text = _formatDate(new Date(), format, locale);

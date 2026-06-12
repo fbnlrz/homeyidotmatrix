@@ -1578,6 +1578,64 @@
         ]
       },
       {
+        "id": "show_qr_code",
+        "title": {
+          "en": "Show QR code",
+          "de": "QR-Code zeigen",
+          "nl": "QR-code tonen",
+          "fr": "Afficher un QR code",
+          "es": "Mostrar código QR"
+        },
+        "titleFormatted": {
+          "en": "Show QR code for [[text]]",
+          "de": "QR-Code für [[text]] zeigen",
+          "nl": "QR-code voor [[text]] tonen"
+        },
+        "hint": {
+          "en": "Render the given text as a QR code at the display's native resolution. Practical for short URLs, Wi-Fi credentials (WIFI:S:<ssid>;T:WPA;P:<pw>;;) or contact strings. Longer payloads need a 64×64 display.",
+          "de": "Erzeugt einen QR-Code aus dem Text in der Displayauflösung. Praktisch für kurze URLs, WLAN-Zugang (WIFI:S:<ssid>;T:WPA;P:<pw>;;) oder Kontakt-Strings. Längere Inhalte brauchen ein 64×64-Display."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=idotmatrix"
+          },
+          {
+            "name": "text",
+            "type": "text",
+            "title": {
+              "en": "Text or URL",
+              "de": "Text oder URL",
+              "nl": "Tekst of URL"
+            },
+            "placeholder": {
+              "en": "https://example.com",
+              "de": "https://example.com",
+              "nl": "https://example.com"
+            }
+          },
+          {
+            "name": "color",
+            "type": "color",
+            "title": {
+              "en": "Foreground",
+              "de": "Vordergrund",
+              "nl": "Voorgrond"
+            }
+          },
+          {
+            "name": "background",
+            "type": "color",
+            "title": {
+              "en": "Background",
+              "de": "Hintergrund",
+              "nl": "Achtergrond"
+            }
+          }
+        ]
+      },
+      {
         "id": "show_for_seconds",
         "title": {
           "en": "Show text for N seconds",

@@ -1,0 +1,11 @@
+{
+  "error": {
+    "disconnected": "Pantalla no accesible. Reconectando…",
+    "service_not_found": "Servicio BLE de iDotMatrix no encontrado. Asegúrate de que la pantalla esté encendida y dentro del alcance.",
+    "write_failed": "No se pudo enviar el comando a la pantalla."
+  },
+  "pair": {
+    "scanning": "Buscando pantallas iDotMatrix…",
+    "no_devices": "No se encontró ninguna pantalla iDotMatrix. Reinicia la pantalla e inténtalo de nuevo."
+  }
+}
