@@ -384,16 +384,23 @@ class IDMDevice extends Homey.Device {
    * a delay. If `restore` is 'off' → screen off; 'clock' → clock; 'black' →
    * solid black; 'effect:N' → built-in effect N.
    */
-  showTemporarily(showFn, seconds, restore = 'black') {
-    showFn().then(() => {
+  async showTemporarily(showFn, seconds, restore = 'black') {
+    try {
+      await showFn();
       this._scheduleRestore(seconds, restore);
-    }).catch(e => this.error('showTemporarily:', e.message));
+    } catch (e) {
+      this.error('showTemporarily:', e.message);
+      throw e;
+    }
   }
 
   _scheduleRestore(seconds, restore) {
     if (this._restoreTimer) clearTimeout(this._restoreTimer);
-    this._restoreTimer = setTimeout(async () => {
-      this._restoreTimer = null;
+    const myTimer = setTimeout(async () => {
+      // Only null the field if this is still the active timer — a follow-up
+      // showTemporarily() may have replaced it while our async work was
+      // already pending in the event loop.
+      if (this._restoreTimer === myTimer) this._restoreTimer = null;
       try {
         if (restore === 'off') {
           await this._setOnOff(false);
@@ -409,6 +416,7 @@ class IDMDevice extends Homey.Device {
         this.error('auto-restore failed:', e.message);
       }
     }, Math.max(1, seconds) * 1000);
+    this._restoreTimer = myTimer;
   }
 
   /**
@@ -424,17 +432,35 @@ class IDMDevice extends Homey.Device {
   async playSequence(steps, { loop = false } = {}) {
     const run = async () => {
       for (const s of steps) {
+        if (this._sequenceStopped) return;
         try {
           await this._runSequenceStep(s);
         } catch (e) {
           this.error('[sequence]', s, e.message);
         }
-        if (s.delayMs) await new Promise(r => setTimeout(r, s.delayMs));
+        if (this._sequenceStopped) return;
+        if (s.delayMs) {
+          // Interruptible sleep so stopSequence() takes effect immediately
+          // instead of waiting out a multi-second delay.
+          await this._interruptibleDelay(s.delayMs);
+        }
       }
     };
     do {
       await run();
     } while (loop && !this._sequenceStopped);
+  }
+
+  _interruptibleDelay(ms) {
+    return new Promise(resolve => {
+      const step = 100;
+      const start = Date.now();
+      const check = () => {
+        if (this._sequenceStopped || Date.now() - start >= ms) return resolve();
+        setTimeout(check, step);
+      };
+      check();
+    });
   }
 
   stopSequence() { this._sequenceStopped = true; }
@@ -477,6 +503,9 @@ class IDMDevice extends Homey.Device {
    * Optionally ack-gated on the per-chunk notification for reliability.
    */
   async showImage(pngBuffer, { ackGated = true } = {}) {
+    if (pngBuffer.length > IDMProtocol.MAX_IMAGE_BYTES) {
+      throw new Error(`image too large: ${pngBuffer.length} bytes (max ${IDMProtocol.MAX_IMAGE_BYTES})`);
+    }
     await this.client.write(IDMProtocol.buildDiyMode(1));
     await new Promise(r => setTimeout(r, 50));
     const payload = IDMProtocol.buildImagePayload(pngBuffer);
@@ -492,6 +521,9 @@ class IDMDevice extends Homey.Device {
    * upload uses per-chunk Buffers, so we ack-gate between Buffers if enabled.
    */
   async showGif(gifBuffer, { ackGated = true } = {}) {
+    if (gifBuffer.length > IDMProtocol.MAX_IMAGE_BYTES) {
+      throw new Error(`gif too large: ${gifBuffer.length} bytes (max ${IDMProtocol.MAX_IMAGE_BYTES})`);
+    }
     await this.client.write(IDMProtocol.buildDiyMode(1));
     await new Promise(r => setTimeout(r, 50));
     const chunks = IDMProtocol.buildGifChunks(gifBuffer);

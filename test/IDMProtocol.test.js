@@ -150,5 +150,33 @@ eq('fullscreen black', P.buildFullscreenColor(0, 0, 0),     Buffer.from([7, 0, 2
   eq('mode 3 mirrored stays 3', Buffer.from([m3m[MODE_OFFSET]]), Buffer.from([3]));
 }
 
+// ---- Input validation edge cases ---------------------------------------------
+
+function throws(label, fn) {
+  try { fn(); failed++; console.log('  FAIL', label, '(expected throw)'); }
+  catch (_) { passed++; console.log('  ok  ', label); }
+}
+
+throws('buildText rejects > MAX_TEXT_CHARS', () => P.buildText('A'.repeat(P.MAX_TEXT_CHARS + 1)));
+throws('buildImagePayload rejects non-Buffer', () => P.buildImagePayload('not a buffer'));
+throws('buildImagePayload rejects huge buffer', () => P.buildImagePayload(Buffer.alloc(P.MAX_IMAGE_BYTES + 1)));
+throws('buildGifChunks rejects non-Buffer', () => P.buildGifChunks(null));
+throws('buildEffect rejects non-array colors', () => P.buildEffect(0, 'red'));
+throws('buildEffect rejects malformed triple', () => P.buildEffect(0, [[1, 2, 3], [4, 5]]));
+
+// buildText with a valid edge length should still succeed
+{
+  const big = P.buildText('A'.repeat(P.MAX_TEXT_CHARS));
+  approx('long text still produces a buffer', big.length > 64);
+}
+
+// buildImagePayload masks idk correctly for medium-sized payloads
+{
+  const png = Buffer.alloc(8192, 0);
+  const out = P.buildImagePayload(png);
+  // idk = 8192 + chunks_count(2) = 8194 → low byte 0x02, high 0x20
+  eq('idk LE bytes for 8KB png', out.subarray(0, 2), Buffer.from([0x02, 0x20]));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

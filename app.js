@@ -80,13 +80,15 @@ class IDMApp extends Homey.App {
     const fire = (id, handler) => {
       card(id).registerRunListener(async args => {
         if (args.device && args.device._touchActivity) args.device._touchActivity();
-        Promise.resolve()
-          .then(() => handler.call(this, args))
-          .then(() => this.flowStats.record(id, true))
-          .catch(err => {
-            this.flowStats.record(id, false, err.message);
-            if (args.device && args.device.error) args.device.error(`${id} failed: ${err.message}`);
-          });
+        try {
+          const result = await handler.call(this, args);
+          this.flowStats.record(id, true);
+          return result;
+        } catch (err) {
+          this.flowStats.record(id, false, err.message);
+          if (args.device && args.device.error) args.device.error(`${id} failed: ${err.message}`);
+          throw err; // surface to Flow engine so the card is marked failed
+        }
       });
     };
 
@@ -164,7 +166,7 @@ class IDMApp extends Homey.App {
     });
 
     fire('show_for_seconds', async args => {
-      args.device.showTemporarily(
+      await args.device.showTemporarily(
         () => args.device.showText(args.text, { color: args.color, mode: 1, speed: 95 }),
         parseInt(args.seconds, 10),
         args.restore || 'black',
@@ -183,6 +185,9 @@ class IDMApp extends Homey.App {
     fire('play_sequence', async args => {
       const steps = _parseSequenceString(args.steps);
       args.device._sequenceStopped = false;
+      // playSequence may loop forever; only await for the synchronous first
+      // step so the Flow card resolves promptly. Failures inside the loop
+      // are logged by the device.
       args.device.playSequence(steps, { loop: !!args.loop }).catch(e => args.device.error('play_sequence:', e.message));
     });
 
