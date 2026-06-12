@@ -41,6 +41,23 @@ class IDMDevice extends Homey.Device {
     this.registerCapabilityListener('onoff', v => this._setOnOff(v));
     this.registerCapabilityListener('dim', v => this._setBrightness(v));
 
+    // Color picker: hue + saturation arrive together (the Homey UI fires
+    // both in one set). Batch them via registerMultipleCapabilityListener
+    // so we send the device exactly one fullscreen-color command.
+    this.registerMultipleCapabilityListener(
+      ['light_hue', 'light_saturation', 'light_mode'],
+      async values => {
+        const h = typeof values.light_hue === 'number'
+          ? values.light_hue : (this.getCapabilityValue('light_hue') || 0);
+        const s = typeof values.light_saturation === 'number'
+          ? values.light_saturation : (this.getCapabilityValue('light_saturation') || 1);
+        const { r, g, b } = _hsvToRgb(h, s, 1);
+        try { await this.client.write(IDMProtocol.buildFullscreenColor(r, g, b)); }
+        catch (e) { this.error('color set failed:', e.message); }
+      },
+      300,
+    );
+
     await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
     this.client.start();
 
@@ -209,6 +226,14 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Play a procedural animation (matrix, gol, dvd, plasma, starfield, fireworks). */
+  /** Music-sync visualization driven by the device's built-in microphone. */
+  async startMusicSync(type = 1) {
+    await this.client.write(IDMProtocol.buildMusicSyncStart(type));
+  }
+  async stopMusicSync() {
+    await this.client.write(IDMProtocol.buildMusicSyncStop());
+  }
+
   async showAnimation(name) {
     const size = this._pixelSize();
     let gif;
@@ -632,6 +657,24 @@ function _formatTimeUntil(target, label) {
   if (!d) parts.push(`${m}m`);
   if (!d && !h) parts.push(`${s}s`);
   return label ? `${label}: ${parts.join(' ')}` : parts.join(' ');
+}
+
+function _hsvToRgb(h, s, v) {
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    default: r = v; g = p; b = q;
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
 }
 
 function _packRgb(r, g, b) {

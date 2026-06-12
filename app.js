@@ -372,6 +372,19 @@ class IDMApp extends Homey.App {
       await args.device.chronograph(parseInt(args.action, 10));
     });
 
+    fire('start_music_sync', async args => {
+      await args.device.startMusicSync(parseInt(args.type, 10));
+    });
+
+    fire('stop_music_sync', async args => {
+      await args.device.stopMusicSync();
+    });
+
+    fire('reset_device', async args => {
+      const buffers = require('./lib/IDMProtocol').buildReset();
+      for (const buf of buffers) await args.device.client.write(buf);
+    });
+
     fire('probe_capabilities', async args => {
       await args.device.probeCapabilities();
     });
