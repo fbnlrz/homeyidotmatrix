@@ -162,13 +162,32 @@ class IDMDevice extends Homey.Device {
     await this.setAvailable().catch(() => {});
     try { await this.client.write(IDMProtocol.buildSetTime(new Date())); } catch (e) { /* ignore */ }
     if (this.heartbeat) this.heartbeat.start();
+    this._updateConnectionDiagnostics();
     // Fire trigger card.
     try { await this._triggerConnectionEvent(true); } catch (e) { /* ignore */ }
   }
 
   async _onClientDisconnected() {
     await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
+    // Pause the heartbeat while the link is down — the reconnect loop is the
+    // single source of truth for getting us back, and a heartbeat write
+    // against a disconnected client would just queue, wait 15s and fail.
+    if (this.heartbeat) this.heartbeat.stop();
+    this._updateConnectionDiagnostics();
     try { await this._triggerConnectionEvent(false); } catch (e) { /* ignore */ }
+  }
+
+  /** Push a snapshot of the BLE connection state into device settings. */
+  _updateConnectionDiagnostics() {
+    if (!this.client || typeof this.client.getConnectionState !== 'function') return;
+    const s = this.client.getConnectionState();
+    const fmt = ts => (ts ? new Date(ts).toISOString() : '—');
+    this.setSettings({
+      last_connected_at: fmt(s.lastConnectedAt),
+      last_disconnected_at: fmt(s.lastDisconnectedAt),
+      reconnect_attempts: String(s.reconnectAttempt),
+      last_disconnect_reason: s.lastError || '—',
+    }).catch(() => { /* settings field may not exist on older installs */ });
   }
 
   async _triggerConnectionEvent(connected) {
@@ -570,14 +589,28 @@ class IDMDevice extends Homey.Device {
 
   async onDeleted() {
     this.log('Device deleted, disconnecting');
+    await this._teardown();
+  }
+
+  /**
+   * Homey calls onUninit when the app is being stopped or upgraded without
+   * deleting the device. Mirror the cleanup so timers and the reconnect loop
+   * don't leak across app restarts.
+   */
+  async onUninit() {
+    this.log('Device uninitializing');
+    await this._teardown();
+  }
+
+  async _teardown() {
     this.stopPlaylist();
     this.stopSequence();
-    if (this._restoreTimer) clearTimeout(this._restoreTimer);
+    if (this._restoreTimer) { clearTimeout(this._restoreTimer); this._restoreTimer = null; }
     if (this.heartbeat) this.heartbeat.stop();
     if (this.brightnessCurve) this.brightnessCurve.stop();
     if (this.screensaver) this.screensaver.stop();
-    if (this._rssiTimer) this.homey.clearInterval(this._rssiTimer);
-    try { await this.client.disconnect(); } catch (e) { /* ignore */ }
+    if (this._rssiTimer) { this.homey.clearInterval(this._rssiTimer); this._rssiTimer = null; }
+    try { if (this.client) await this.client.disconnect(); } catch (e) { /* ignore */ }
   }
 }
 

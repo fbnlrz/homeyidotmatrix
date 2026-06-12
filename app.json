@@ -488,6 +488,46 @@
                 "de": "Nur-Lese-JSON des letzten Capability-Probe-Laufs.",
                 "nl": "Alleen-lezen JSON van de laatste capability-probe."
               }
+            },
+            {
+              "id": "last_connected_at",
+              "type": "text",
+              "label": {
+                "en": "Last connected at",
+                "de": "Zuletzt verbunden",
+                "nl": "Laatst verbonden"
+              },
+              "value": "—"
+            },
+            {
+              "id": "last_disconnected_at",
+              "type": "text",
+              "label": {
+                "en": "Last disconnected at",
+                "de": "Zuletzt getrennt",
+                "nl": "Laatst losgekoppeld"
+              },
+              "value": "—"
+            },
+            {
+              "id": "reconnect_attempts",
+              "type": "text",
+              "label": {
+                "en": "Reconnect attempts since last connect",
+                "de": "Reconnect-Versuche seit letzter Verbindung",
+                "nl": "Reconnect-pogingen sinds laatste verbinding"
+              },
+              "value": "0"
+            },
+            {
+              "id": "last_disconnect_reason",
+              "type": "text",
+              "label": {
+                "en": "Last disconnect reason",
+                "de": "Letzter Trenngrund",
+                "nl": "Laatste verbreekreden"
+              },
+              "value": "—"
             }
           ]
         }
