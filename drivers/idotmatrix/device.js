@@ -38,8 +38,39 @@ class IDMDevice extends Homey.Device {
       onDisconnected: () => this._onClientDisconnected(),
     });
 
+    // Migrate existing paired devices: newly-introduced capabilities have to
+    // be added explicitly, otherwise the device card stays on the old layout
+    // (just onoff was the symptom in v0.8.0).
+    for (const cap of ['light_hue', 'light_saturation', 'idm_mode']) {
+      if (!this.hasCapability(cap)) {
+        try { await this.addCapability(cap); }
+        catch (e) { this.log('addCapability failed for', cap, ':', e.message); }
+      }
+    }
+    // Remove the old light_mode if it slipped in from a previous version.
+    if (this.hasCapability('light_mode')) {
+      try { await this.removeCapability('light_mode'); } catch (e) { /* ignore */ }
+    }
+
     this.registerCapabilityListener('onoff', v => this._setOnOff(v));
     this.registerCapabilityListener('dim', v => this._setBrightness(v));
+    this.registerCapabilityListener('idm_mode', v => this._setMode(v));
+
+    // Color picker: hue + saturation arrive together. Batch them so we send
+    // exactly one fullscreen-color command per pick.
+    this.registerMultipleCapabilityListener(
+      ['light_hue', 'light_saturation'],
+      async values => {
+        const h = typeof values.light_hue === 'number'
+          ? values.light_hue : (this.getCapabilityValue('light_hue') || 0);
+        const s = typeof values.light_saturation === 'number'
+          ? values.light_saturation : (this.getCapabilityValue('light_saturation') || 1);
+        const { r, g, b } = _hsvToRgb(h, s, 1);
+        try { await this.client.write(IDMProtocol.buildFullscreenColor(r, g, b)); }
+        catch (e) { this.error('color set failed:', e.message); }
+      },
+      300,
+    );
 
     await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
     this.client.start();
@@ -158,6 +189,32 @@ class IDMDevice extends Homey.Device {
     await this.client.write(IDMProtocol.buildBrightness(percent));
   }
 
+  /** Mode-picker listener — runs the relevant built-in display mode. */
+  async _setMode(mode) {
+    try {
+      switch (mode) {
+        case 'clock':       return this.showClock({});
+        case 'countdown':   return this.setCountdown({ action: 1, minutes: 5, seconds: 0 });
+        case 'scoreboard':  return this.setScoreboard(0, 0);
+        case 'chronograph': return this.chronograph(1);
+        case 'rainbow_h':   return this.showEffect(0);
+        case 'rainbow_v':   return this.showEffect(3);
+        case 'random_px':   return this.showEffect(6);
+        case 'color': {
+          const h = this.getCapabilityValue('light_hue') || 0;
+          const s = this.getCapabilityValue('light_saturation') || 1;
+          const { r, g, b } = _hsvToRgb(h, s, 1);
+          return this.client.write(IDMProtocol.buildFullscreenColor(r, g, b));
+        }
+        case 'music_sync':  return this.startMusicSync(1);
+        case 'test':        return this.showTestPattern();
+        default:            return;
+      }
+    } catch (e) {
+      this.error('_setMode failed:', e.message);
+    }
+  }
+
   async showText(text, { color, mode = 1, speed = 95, mirror = false, colorMode = 1 } = {}) {
     const { r, g, b } = _parseColor(color || this._defaultColor('#ff0000'));
     const buf = IDMProtocol.buildText(text || '', {
@@ -209,6 +266,14 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Play a procedural animation (matrix, gol, dvd, plasma, starfield, fireworks). */
+  /** Music-sync visualization driven by the device's built-in microphone. */
+  async startMusicSync(type = 1) {
+    await this.client.write(IDMProtocol.buildMusicSyncStart(type));
+  }
+  async stopMusicSync() {
+    await this.client.write(IDMProtocol.buildMusicSyncStop());
+  }
+
   async showAnimation(name) {
     const size = this._pixelSize();
     let gif;
@@ -632,6 +697,24 @@ function _formatTimeUntil(target, label) {
   if (!d) parts.push(`${m}m`);
   if (!d && !h) parts.push(`${s}s`);
   return label ? `${label}: ${parts.join(' ')}` : parts.join(' ');
+}
+
+function _hsvToRgb(h, s, v) {
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    default: r = v; g = p; b = q;
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
 }
 
 function _packRgb(r, g, b) {

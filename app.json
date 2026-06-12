@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.8.0",
+  "version": "0.8.2",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": [
@@ -114,6 +114,26 @@
     "activityLog": {
       "method": "GET",
       "path": "/activity"
+    },
+    "rssiHistory": {
+      "method": "GET",
+      "path": "/rssi-history"
+    },
+    "flowStats": {
+      "method": "GET",
+      "path": "/flow-stats"
+    },
+    "speedTest": {
+      "method": "POST",
+      "path": "/speed-test"
+    },
+    "smokeTest": {
+      "method": "POST",
+      "path": "/smoke-test"
+    },
+    "fontGlyphs": {
+      "method": "GET",
+      "path": "/font-glyphs"
     }
   },
   "images": {
@@ -132,7 +152,10 @@
       "class": "light",
       "capabilities": [
         "onoff",
-        "dim"
+        "dim",
+        "light_hue",
+        "light_saturation",
+        "light_mode"
       ],
       "platforms": [
         "local"
@@ -471,6 +494,101 @@
       ]
     }
   ],
+  "capabilities": {
+    "idm_mode": {
+      "type": "enum",
+      "title": {
+        "en": "Mode",
+        "de": "Modus",
+        "nl": "Modus"
+      },
+      "uiComponent": "picker",
+      "getable": true,
+      "setable": true,
+      "values": [
+        {
+          "id": "clock",
+          "title": {
+            "en": "Clock",
+            "de": "Uhr",
+            "nl": "Klok"
+          }
+        },
+        {
+          "id": "countdown",
+          "title": {
+            "en": "Countdown (5 min)",
+            "de": "Countdown (5 Min)",
+            "nl": "Countdown (5 min)"
+          }
+        },
+        {
+          "id": "scoreboard",
+          "title": {
+            "en": "Scoreboard 0:0",
+            "de": "Scoreboard 0:0",
+            "nl": "Scorebord 0:0"
+          }
+        },
+        {
+          "id": "chronograph",
+          "title": {
+            "en": "Stopwatch",
+            "de": "Stoppuhr",
+            "nl": "Stopwatch"
+          }
+        },
+        {
+          "id": "rainbow_h",
+          "title": {
+            "en": "Rainbow (horizontal)",
+            "de": "Regenbogen (horizontal)",
+            "nl": "Regenboog (horizontaal)"
+          }
+        },
+        {
+          "id": "rainbow_v",
+          "title": {
+            "en": "Rainbow (vertical)",
+            "de": "Regenbogen (vertikal)",
+            "nl": "Regenboog (verticaal)"
+          }
+        },
+        {
+          "id": "random_px",
+          "title": {
+            "en": "Random pixels",
+            "de": "Zufalls-Pixel",
+            "nl": "Willekeurige pixels"
+          }
+        },
+        {
+          "id": "color",
+          "title": {
+            "en": "Solid color",
+            "de": "Einfarbig",
+            "nl": "Effen kleur"
+          }
+        },
+        {
+          "id": "music_sync",
+          "title": {
+            "en": "Music sync (mic)",
+            "de": "Music-Sync (Mikro)",
+            "nl": "Music-sync (mic)"
+          }
+        },
+        {
+          "id": "test",
+          "title": {
+            "en": "Test pattern",
+            "de": "Test-Muster",
+            "nl": "Testpatroon"
+          }
+        }
+      ]
+    }
+  },
   "flow": {
     "triggers": [
       {
@@ -1770,6 +1888,89 @@
           "en": "Show random sticker on [[device]]",
           "de": "Zufälligen Sticker auf [[device]] zeigen",
           "nl": "Toon willekeurige sticker op [[device]]"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=idotmatrix"
+          }
+        ]
+      },
+      {
+        "id": "start_music_sync",
+        "title": {
+          "en": "Start music-sync (uses built-in mic)",
+          "de": "Music-Sync starten (nutzt eingebautes Mikrofon)",
+          "nl": "Music-sync starten (gebruikt ingebouwde microfoon)"
+        },
+        "titleFormatted": {
+          "en": "Start music-sync visualization (type [[type]])",
+          "de": "Music-Sync-Visualisierung starten (Typ [[type]])",
+          "nl": "Music-sync visualisatie starten (type [[type]])"
+        },
+        "hint": {
+          "en": "Drives a sound-reactive dancing-figure animation using the device's built-in microphone — no external audio needed.",
+          "de": "Spielt eine auf Umgebungsgeräusch reagierende Tanz-Animation über das eingebaute Gerät-Mikrofon ab.",
+          "nl": "Geeft een geluid-reactieve dansanimatie weer via de ingebouwde microfoon van het apparaat."
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=idotmatrix"
+          },
+          {
+            "name": "type",
+            "type": "number",
+            "title": {
+              "en": "Animation type",
+              "de": "Animationstyp",
+              "nl": "Animatietype"
+            },
+            "min": 0,
+            "max": 10,
+            "step": 1,
+            "value": 1
+          }
+        ]
+      },
+      {
+        "id": "stop_music_sync",
+        "title": {
+          "en": "Stop music-sync",
+          "de": "Music-Sync stoppen",
+          "nl": "Music-sync stoppen"
+        },
+        "titleFormatted": {
+          "en": "Stop music-sync visualization",
+          "de": "Music-Sync-Visualisierung stoppen",
+          "nl": "Music-sync visualisatie stoppen"
+        },
+        "args": [
+          {
+            "name": "device",
+            "type": "device",
+            "filter": "driver_id=idotmatrix"
+          }
+        ]
+      },
+      {
+        "id": "reset_device",
+        "title": {
+          "en": "Reset display (factory)",
+          "de": "Display zurücksetzen (Werkseinstellung)",
+          "nl": "Display resetten (fabrieksinstelling)"
+        },
+        "titleFormatted": {
+          "en": "Reset display to factory defaults",
+          "de": "Display auf Werkseinstellungen zurücksetzen",
+          "nl": "Display naar fabrieksinstellingen resetten"
+        },
+        "hint": {
+          "en": "Sends the factory-reset opcode sequence. Use this if the display is stuck.",
+          "de": "Sendet die Werks-Reset-Befehlsfolge. Hilfreich wenn das Display hängt.",
+          "nl": "Verzendt de fabrieksreset-opcode-reeks. Handig als het display vastloopt."
         },
         "args": [
           {
