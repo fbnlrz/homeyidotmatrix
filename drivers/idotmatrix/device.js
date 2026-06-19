@@ -5,6 +5,7 @@ const IDMProtocol = require('../../lib/IDMProtocol');
 const IDMClient = require('../../lib/IDMClient');
 const IDMProbe = require('../../lib/IDMProbe');
 const Heartbeat = require('../../lib/Heartbeat');
+const HealthCheck = require('../../lib/HealthCheck');
 const RssiHistory = require('../../lib/RssiHistory');
 const Playlist = require('../../lib/Playlist');
 const WordClock = require('../../lib/WordClock');
@@ -36,12 +37,13 @@ class IDMDevice extends Homey.Device {
       onLog: (...a) => this.log(...a),
       onConnected: () => this._onClientConnected(),
       onDisconnected: () => this._onClientDisconnected(),
+      defaultWaitConnectedMs: this._waitConnectedMsFromSetting(),
     });
 
     // Migrate existing paired devices: newly-introduced capabilities have to
     // be added explicitly, otherwise the device card stays on the old layout
     // (just onoff was the symptom in v0.8.0).
-    for (const cap of ['light_hue', 'light_saturation', 'idm_mode']) {
+    for (const cap of ['light_hue', 'light_saturation', 'idm_mode', 'measure_signal_strength']) {
       if (!this.hasCapability(cap)) {
         try { await this.addCapability(cap); }
         catch (e) { this.log('addCapability failed for', cap, ':', e.message); }
@@ -98,6 +100,13 @@ class IDMDevice extends Homey.Device {
       device: this, client: this.client, onLog: (...a) => this.log(...a),
     });
     this.screensaver.start();
+
+    this.healthcheck = new HealthCheck({
+      device: this, client: this.client,
+      intervalMs: 60 * 60 * 1000,
+      onLog: (...a) => this.log(...a),
+    });
+    this.healthcheck.start();
   }
 
   /** Called by every user-initiated content method to reset the idle clock. */
@@ -118,6 +127,10 @@ class IDMDevice extends Homey.Device {
       if (typeof rssi === 'number') {
         if (this.rssiHistory) this.rssiHistory.push(rssi);
         await this.setSettings({ last_rssi: `${rssi} dBm` }).catch(() => {});
+        // Mirror onto the capability so Homey Insights can graph it.
+        if (this.hasCapability('measure_signal_strength')) {
+          await this.setCapabilityValue('measure_signal_strength', rssi).catch(() => {});
+        }
       }
     } catch (e) { /* ignore */ }
   }
@@ -125,6 +138,20 @@ class IDMDevice extends Homey.Device {
   /** Default text color from device settings, fallback to user-supplied. */
   _defaultColor(fallback = '#ffffff') {
     return (this.getSetting('default_color') || '').trim() || fallback;
+  }
+
+  /**
+   * Per-device theme. Flow card arguments still win — this is the fallback
+   * when no color was passed. Returns a stable object even when settings are
+   * empty, so callers can do `const { fg } = this._theme()`.
+   */
+  _theme() {
+    const get = (key, fallback) => (this.getSetting(key) || '').trim() || fallback;
+    return {
+      fg: get('default_color', '#ffffff'),
+      bg: get('default_background', '#000000'),
+      accent: get('default_accent', '#ffaa00'),
+    };
   }
 
   /**
@@ -162,13 +189,32 @@ class IDMDevice extends Homey.Device {
     await this.setAvailable().catch(() => {});
     try { await this.client.write(IDMProtocol.buildSetTime(new Date())); } catch (e) { /* ignore */ }
     if (this.heartbeat) this.heartbeat.start();
+    this._updateConnectionDiagnostics();
     // Fire trigger card.
     try { await this._triggerConnectionEvent(true); } catch (e) { /* ignore */ }
   }
 
   async _onClientDisconnected() {
     await this.setUnavailable(this.homey.__('error.disconnected') || 'Disconnected').catch(() => {});
+    // Pause the heartbeat while the link is down — the reconnect loop is the
+    // single source of truth for getting us back, and a heartbeat write
+    // against a disconnected client would just queue, wait 15s and fail.
+    if (this.heartbeat) this.heartbeat.stop();
+    this._updateConnectionDiagnostics();
     try { await this._triggerConnectionEvent(false); } catch (e) { /* ignore */ }
+  }
+
+  /** Push a snapshot of the BLE connection state into device settings. */
+  _updateConnectionDiagnostics() {
+    if (!this.client || typeof this.client.getConnectionState !== 'function') return;
+    const s = this.client.getConnectionState();
+    const fmt = ts => (ts ? new Date(ts).toISOString() : '—');
+    this.setSettings({
+      last_connected_at: fmt(s.lastConnectedAt),
+      last_disconnected_at: fmt(s.lastDisconnectedAt),
+      reconnect_attempts: String(s.reconnectAttempt),
+      last_disconnect_reason: s.lastError || '—',
+    }).catch(() => { /* settings field may not exist on older installs */ });
   }
 
   async _triggerConnectionEvent(connected) {
@@ -235,7 +281,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Blink between color and black `times` cycles. */
-  async flash({ color = '#ffffff', times = 5, onMs = 150, offMs = 150 } = {}) {
+  async flash(opts = {}) {
+    const theme = this._theme();
+    const { color = theme.fg, times = 5, onMs = 150, offMs = 150 } = opts;
     const c = _parseColor(color);
     for (let i = 0; i < times; i++) {
       await this.client.write(IDMProtocol.buildFullscreenColor(c.r, c.g, c.b));
@@ -253,7 +301,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** "It is twenty past seven" style time in EN/DE/NL. */
-  async showWordClock({ locale = 'en', color = '#ffffff', mode = 1, mirror = false } = {}) {
+  async showWordClock(opts = {}) {
+    const theme = this._theme();
+    const { locale = 'en', color = theme.fg, mode = 1, mirror = false } = opts;
     const text = WordClock.format(locale, new Date());
     await this.showText(text, { color, mode, speed: 90, mirror });
   }
@@ -305,14 +355,67 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Show 2-3 lines of text statically stacked (rendered as a PNG image). */
-  async showMultilineText(lines, { color = '#ffffff', background = '#000000' } = {}) {
+  async showMultilineText(lines, opts = {}) {
+    const theme = this._theme();
+    const { color = theme.fg, background = theme.bg } = opts;
     const size = this._pixelSize();
     const png = await _renderMultilinePng(size, lines.filter(Boolean), _parseColor(color), _parseColor(background));
     await this.showImage(png);
   }
 
+  /**
+   * Show a big number with an optional short label below — designed for
+   * notification badges, queue counts, alarm totals etc. Numbers >999 are
+   * rendered as "999+" to keep them legible at 16/32 pixels.
+   */
+  async showNotificationCount(count, label = '', color) {
+    const fg = color || this._theme().accent;
+    const num = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    const text = num > 999 ? '999+' : String(num);
+    const lines = label && String(label).trim()
+      ? [text, String(label).trim()]
+      : [text];
+    await this.showMultilineText(lines, { color: fg, background: this._theme().bg });
+  }
+
+  /**
+   * Render a QR code at the device's native pixel resolution and show it.
+   * Auto-picks the error-correction level so the smallest QR fits 1 module
+   * per pixel — typical URLs (~30 chars) fit nicely on a 32×32 display, and
+   * 64×64 leaves room for longer payloads.
+   */
+  async showQrCode(text, opts = {}) {
+    const QRCode = require('qrcode');
+    const theme = this._theme();
+    const { foreground = theme.fg, background = theme.bg } = opts;
+    const size = this._pixelSize();
+    if (!text || !String(text).trim()) throw new Error('QR text is empty');
+    // Try error-correction levels from L → H; pick the largest level that
+    // still produces a QR with version ≤ size (1 module/pixel). qrcode lib
+    // auto-picks the smallest version that fits the text at the given ECC.
+    const candidates = ['H', 'Q', 'M', 'L'];
+    let buf = null;
+    for (const ecc of candidates) {
+      try {
+        const png = await QRCode.toBuffer(String(text), {
+          type: 'png',
+          errorCorrectionLevel: ecc,
+          margin: 1,
+          width: size,
+          color: { dark: foreground, light: background },
+        });
+        buf = png;
+        break;
+      } catch (e) { /* text doesn't fit at this ECC, try lower */ }
+    }
+    if (!buf) throw new Error(`QR payload too long for ${size}×${size} display`);
+    await this.showImage(buf);
+  }
+
   /** Show the current date in the given format. */
-  async showDate({ format = 'dd.MM', color = '#ffffff', mode = 0, mirror = false, locale = 'en' } = {}) {
+  async showDate(opts = {}) {
+    const theme = this._theme();
+    const { format = 'dd.MM', color = theme.fg, mode = 0, mirror = false, locale = 'en' } = opts;
     const text = _formatDate(new Date(), format, locale);
     if (mode === 0) {
       // Static — render as PNG so it doesn't scroll
@@ -323,7 +426,9 @@ class IDMDevice extends Homey.Device {
   }
 
   /** Show a countdown to a future ISO timestamp. */
-  async showCountdownTo({ targetIso, label = '', color = '#ffffff', mode = 1, mirror = false } = {}) {
+  async showCountdownTo(opts = {}) {
+    const theme = this._theme();
+    const { targetIso, label = '', color = theme.fg, mode = 1, mirror = false } = opts;
     const t = new Date(targetIso);
     if (!Number.isFinite(t.getTime())) throw new Error('invalid target time');
     const text = _formatTimeUntil(t, label);
@@ -365,16 +470,23 @@ class IDMDevice extends Homey.Device {
    * a delay. If `restore` is 'off' → screen off; 'clock' → clock; 'black' →
    * solid black; 'effect:N' → built-in effect N.
    */
-  showTemporarily(showFn, seconds, restore = 'black') {
-    showFn().then(() => {
+  async showTemporarily(showFn, seconds, restore = 'black') {
+    try {
+      await showFn();
       this._scheduleRestore(seconds, restore);
-    }).catch(e => this.error('showTemporarily:', e.message));
+    } catch (e) {
+      this.error('showTemporarily:', e.message);
+      throw e;
+    }
   }
 
   _scheduleRestore(seconds, restore) {
     if (this._restoreTimer) clearTimeout(this._restoreTimer);
-    this._restoreTimer = setTimeout(async () => {
-      this._restoreTimer = null;
+    const myTimer = setTimeout(async () => {
+      // Only null the field if this is still the active timer — a follow-up
+      // showTemporarily() may have replaced it while our async work was
+      // already pending in the event loop.
+      if (this._restoreTimer === myTimer) this._restoreTimer = null;
       try {
         if (restore === 'off') {
           await this._setOnOff(false);
@@ -390,6 +502,7 @@ class IDMDevice extends Homey.Device {
         this.error('auto-restore failed:', e.message);
       }
     }, Math.max(1, seconds) * 1000);
+    this._restoreTimer = myTimer;
   }
 
   /**
@@ -405,17 +518,35 @@ class IDMDevice extends Homey.Device {
   async playSequence(steps, { loop = false } = {}) {
     const run = async () => {
       for (const s of steps) {
+        if (this._sequenceStopped) return;
         try {
           await this._runSequenceStep(s);
         } catch (e) {
           this.error('[sequence]', s, e.message);
         }
-        if (s.delayMs) await new Promise(r => setTimeout(r, s.delayMs));
+        if (this._sequenceStopped) return;
+        if (s.delayMs) {
+          // Interruptible sleep so stopSequence() takes effect immediately
+          // instead of waiting out a multi-second delay.
+          await this._interruptibleDelay(s.delayMs);
+        }
       }
     };
     do {
       await run();
     } while (loop && !this._sequenceStopped);
+  }
+
+  _interruptibleDelay(ms) {
+    return new Promise(resolve => {
+      const step = 100;
+      const start = Date.now();
+      const check = () => {
+        if (this._sequenceStopped || Date.now() - start >= ms) return resolve();
+        setTimeout(check, step);
+      };
+      check();
+    });
   }
 
   stopSequence() { this._sequenceStopped = true; }
@@ -458,6 +589,9 @@ class IDMDevice extends Homey.Device {
    * Optionally ack-gated on the per-chunk notification for reliability.
    */
   async showImage(pngBuffer, { ackGated = true } = {}) {
+    if (pngBuffer.length > IDMProtocol.MAX_IMAGE_BYTES) {
+      throw new Error(`image too large: ${pngBuffer.length} bytes (max ${IDMProtocol.MAX_IMAGE_BYTES})`);
+    }
     await this.client.write(IDMProtocol.buildDiyMode(1));
     await new Promise(r => setTimeout(r, 50));
     const payload = IDMProtocol.buildImagePayload(pngBuffer);
@@ -473,6 +607,9 @@ class IDMDevice extends Homey.Device {
    * upload uses per-chunk Buffers, so we ack-gate between Buffers if enabled.
    */
   async showGif(gifBuffer, { ackGated = true } = {}) {
+    if (gifBuffer.length > IDMProtocol.MAX_IMAGE_BYTES) {
+      throw new Error(`gif too large: ${gifBuffer.length} bytes (max ${IDMProtocol.MAX_IMAGE_BYTES})`);
+    }
     await this.client.write(IDMProtocol.buildDiyMode(1));
     await new Promise(r => setTimeout(r, 50));
     const chunks = IDMProtocol.buildGifChunks(gifBuffer);
@@ -483,7 +620,9 @@ class IDMDevice extends Homey.Device {
     });
   }
 
-  async showClock({ style = 0, showDate = true, hour24 = true, color = '#ffffff' } = {}) {
+  async showClock(opts = {}) {
+    const theme = this._theme();
+    const { style = 0, showDate = true, hour24 = true, color = theme.fg } = opts;
     const { r, g, b } = _parseColor(color);
     try { await this.client.write(IDMProtocol.buildSetTime(new Date())); } catch (e) { /* ignore */ }
     await this.client.write(IDMProtocol.buildClock({
@@ -566,18 +705,40 @@ class IDMDevice extends Homey.Device {
     if (changedKeys.includes('flip') && this.client.isConnected()) {
       await this.client.write(IDMProtocol.buildFlip(!!newSettings.flip));
     }
+    if (changedKeys.includes('fast_fail') && this.client) {
+      this.client._defaultWaitConnectedMs = newSettings.fast_fail ? 2000 : 15000;
+    }
+  }
+
+  _waitConnectedMsFromSetting() {
+    return this.getSetting('fast_fail') ? 2000 : 15000;
   }
 
   async onDeleted() {
     this.log('Device deleted, disconnecting');
+    await this._teardown();
+  }
+
+  /**
+   * Homey calls onUninit when the app is being stopped or upgraded without
+   * deleting the device. Mirror the cleanup so timers and the reconnect loop
+   * don't leak across app restarts.
+   */
+  async onUninit() {
+    this.log('Device uninitializing');
+    await this._teardown();
+  }
+
+  async _teardown() {
     this.stopPlaylist();
     this.stopSequence();
-    if (this._restoreTimer) clearTimeout(this._restoreTimer);
+    if (this._restoreTimer) { clearTimeout(this._restoreTimer); this._restoreTimer = null; }
     if (this.heartbeat) this.heartbeat.stop();
     if (this.brightnessCurve) this.brightnessCurve.stop();
     if (this.screensaver) this.screensaver.stop();
-    if (this._rssiTimer) this.homey.clearInterval(this._rssiTimer);
-    try { await this.client.disconnect(); } catch (e) { /* ignore */ }
+    if (this.healthcheck) this.healthcheck.stop();
+    if (this._rssiTimer) { this.homey.clearInterval(this._rssiTimer); this._rssiTimer = null; }
+    try { if (this.client) await this.client.disconnect(); } catch (e) { /* ignore */ }
   }
 }
 

@@ -1,0 +1,11 @@
+{
+  "error": {
+    "disconnected": "Écran injoignable. Tentative de reconnexion…",
+    "service_not_found": "Service BLE iDotMatrix introuvable. Vérifiez que l'écran est allumé et à portée.",
+    "write_failed": "Échec de l'envoi de la commande à l'écran."
+  },
+  "pair": {
+    "scanning": "Recherche d'écrans iDotMatrix…",
+    "no_devices": "Aucun écran iDotMatrix trouvé. Redémarrez l'écran et réessayez."
+  }
+}

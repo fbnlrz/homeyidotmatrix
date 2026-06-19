@@ -46,6 +46,9 @@ module.exports = {
 
   async uploadMedia({ homey, params, body }) {
     const name = params.name;
+    if (!name || !/^[A-Za-z0-9._-]+$/.test(name)) {
+      throw new Error('invalid filename: only letters, digits, dot, underscore and dash allowed');
+    }
     let buf;
     if (Buffer.isBuffer(body)) {
       buf = body;
@@ -85,38 +88,32 @@ module.exports = {
   },
 
   async previewAnimation({ homey, params }) {
-    const driver = homey.drivers.getDriver('idotmatrix');
-    const devices = driver ? driver.getDevices() : [];
-    if (!devices.length) throw new Error('no devices paired');
-    for (const dev of devices) await dev.showAnimation(params.name);
-    return { ok: true, devices: devices.length };
+    return _broadcast(homey, dev => dev.showAnimation(params.name));
   },
 
   async previewEffect({ homey, params }) {
-    const driver = homey.drivers.getDriver('idotmatrix');
-    const devices = driver ? driver.getDevices() : [];
-    if (!devices.length) throw new Error('no devices paired');
-    for (const dev of devices) await dev.showEffect(parseInt(params.style, 10));
-    return { ok: true, devices: devices.length };
+    return _broadcast(homey, dev => dev.showEffect(parseInt(params.style, 10)));
   },
 
   async previewSolidColor({ homey, body }) {
     const color = body && body.color ? body.color : '#ffffff';
-    const driver = homey.drivers.getDriver('idotmatrix');
-    const devices = driver ? driver.getDevices() : [];
-    if (!devices.length) throw new Error('no devices paired');
-    for (const dev of devices) await dev.showSolidColor(color);
-    return { ok: true, devices: devices.length };
+    return _broadcast(homey, dev => dev.showSolidColor(color));
   },
 
   async rssiHistory({ homey }) {
     const driver = homey.drivers.getDriver('idotmatrix');
     const devices = driver ? driver.getDevices() : [];
-    return devices.map(d => ({
-      id: d.getData() && d.getData().id,
-      name: d.getName(),
-      samples: d.rssiHistory ? d.rssiHistory.list() : [],
-    }));
+    return devices
+      .map(d => {
+        const data = d.getData();
+        if (!data || !data.id) return null;
+        return {
+          id: data.id,
+          name: d.getName(),
+          samples: d.rssiHistory ? d.rssiHistory.list() : [],
+        };
+      })
+      .filter(Boolean);
   },
 
   async flowStats({ homey }) {
@@ -126,16 +123,14 @@ module.exports = {
   async speedTest({ homey }) {
     const driver = homey.drivers.getDriver('idotmatrix');
     const devices = driver ? driver.getDevices() : [];
-    const results = [];
-    for (const dev of devices) {
-      try {
-        const r = await dev.measureBleSpeed({ sizeBytes: 4000, chunkSize: 200 });
-        results.push({ name: dev.getName(), ...r });
-      } catch (e) {
-        results.push({ name: dev.getName(), error: e.message });
-      }
-    }
-    return results;
+    // allSettled so one device's BLE failure doesn't skip the rest.
+    const settled = await Promise.allSettled(devices.map(async dev => {
+      const r = await dev.measureBleSpeed({ sizeBytes: 4000, chunkSize: 200 });
+      return { name: dev.getName(), ...r };
+    }));
+    return settled.map((res, i) => res.status === 'fulfilled'
+      ? res.value
+      : { name: devices[i].getName(), error: res.reason && res.reason.message });
   },
 
   async smokeTest({ homey }) {
@@ -161,7 +156,7 @@ module.exports = {
     return { device: dev.getName(), steps };
   },
 
-  async fontGlyphs({ homey }) {
+  async fontGlyphs() {
     const Font = require('./lib/font8x16');
     const out = {};
     for (const code of Object.keys(Font)) {
@@ -173,17 +168,41 @@ module.exports = {
     return out;
   },
 
+  /**
+   * Configure the remote sticker pack URL. Pass an empty string to clear.
+   * The StickerPack hot-swaps without an app restart.
+   */
+  async setStickerRemoteUrl({ homey, body }) {
+    const url = body && typeof body.url === 'string' ? body.url.trim() : '';
+    homey.settings.set('remote_sticker_url', url || null);
+    return { ok: true, url: url || null };
+  },
+
+  async getStickerRemoteUrl({ homey }) {
+    return { url: homey.settings.get('remote_sticker_url') || null };
+  },
+
   async previewPixelArt({ homey, body }) {
     let buf;
     if (Buffer.isBuffer(body)) buf = body;
     else if (body && body.type === 'Buffer' && Array.isArray(body.data)) buf = Buffer.from(body.data);
     else throw new Error('expected raw PNG bytes');
-    const driver = homey.drivers.getDriver('idotmatrix');
-    const devices = driver ? driver.getDevices() : [];
-    if (!devices.length) throw new Error('no iDotMatrix devices paired');
-    for (const dev of devices) {
-      await dev.showImage(buf);
-    }
-    return { ok: true, devices: devices.length };
+    return _broadcast(homey, dev => dev.showImage(buf), 'no iDotMatrix devices paired');
   },
 };
+
+/**
+ * Broadcast one async operation to every paired iDotMatrix device.
+ * Throws when no device is paired; otherwise resolves after every device
+ * has either succeeded or failed (no early bail).
+ */
+async function _broadcast(homey, op, emptyMsg = 'no devices paired') {
+  const driver = homey.drivers.getDriver('idotmatrix');
+  const devices = driver ? driver.getDevices() : [];
+  if (!devices.length) throw new Error(emptyMsg);
+  const settled = await Promise.allSettled(devices.map(d => op(d)));
+  const errors = settled
+    .map((s, i) => (s.status === 'rejected' ? { name: devices[i].getName(), error: s.reason && s.reason.message } : null))
+    .filter(Boolean);
+  return { ok: errors.length === 0, devices: devices.length, errors };
+}

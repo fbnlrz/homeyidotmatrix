@@ -166,12 +166,29 @@
           for (const it of items) {
             const div = document.createElement('div');
             div.className = 'file';
-            const thumb = it.dataUrl ? '<img src="' + it.dataUrl + '" alt="">' : '';
-            div.innerHTML =
-              thumb +
-              '<div class="name">' + it.name + '</div>' +
-              '<small>' + (it.size / 1024).toFixed(1) + ' KB</small><br/>' +
-              '<button data-name="' + it.name + '" class="del">delete</button>';
+            if (it.dataUrl) {
+              const img = document.createElement('img');
+              // dataUrl is generated server-side from local files; only set if
+              // it parses as an inline image URI to avoid javascript: tricks.
+              if (typeof it.dataUrl === 'string' && /^data:image\//.test(it.dataUrl)) {
+                img.src = it.dataUrl;
+              }
+              img.alt = '';
+              div.appendChild(img);
+            }
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'name';
+            nameDiv.textContent = String(it.name); // safe — never parsed as HTML
+            div.appendChild(nameDiv);
+            const small = document.createElement('small');
+            small.textContent = (Number(it.size || 0) / 1024).toFixed(1) + ' KB';
+            div.appendChild(small);
+            div.appendChild(document.createElement('br'));
+            const btn = document.createElement('button');
+            btn.className = 'del';
+            btn.dataset.name = String(it.name);
+            btn.textContent = 'delete';
+            div.appendChild(btn);
             root.appendChild(div);
           }
           root.querySelectorAll('.del').forEach(btn => {
@@ -227,21 +244,31 @@
         grid.style.gridTemplateColumns = 'repeat(' + size + ', 12px)';
         grid.innerHTML = '';
         cells = Array.from({ length: size }, () => Array(size).fill('#000000'));
+        // Use a DocumentFragment so we hit the DOM once, not size×size times.
+        const frag = document.createDocumentFragment();
         for (let y = 0; y < size; y++) {
           for (let x = 0; x < size; x++) {
             const c = document.createElement('div');
             c.className = 'cell';
             c.dataset.x = x;
             c.dataset.y = y;
-            c.addEventListener('mousedown', paint);
-            c.addEventListener('mouseover', e => { if (mouseDown) paint(e); });
-            grid.appendChild(c);
+            frag.appendChild(c);
           }
         }
+        grid.appendChild(frag);
       }
+      // Event delegation — one listener per event type on the grid container
+      // instead of size² per cell (was ~1024 for a 32×32 grid).
+      grid.addEventListener('mousedown', e => {
+        if (e.target && e.target.classList.contains('cell')) paint(e);
+      });
+      grid.addEventListener('mouseover', e => {
+        if (mouseDown && e.target && e.target.classList.contains('cell')) paint(e);
+      });
       function paint(e) {
         const x = +e.target.dataset.x;
         const y = +e.target.dataset.y;
+        if (!(y >= 0 && y < gridSize && x >= 0 && x < gridSize)) return;
         const color = e.shiftKey ? '#000000' : document.getElementById('ed-color').value;
         cells[y][x] = color;
         e.target.style.background = color;
@@ -350,15 +377,51 @@
       const Homey = window._homey;
       Homey.api('GET', '/flow-stats').then(rows => {
         const root = document.getElementById('stats-table');
-        if (!rows.length) { root.innerHTML = '<p style="color:#888">No Flow runs yet.</p>'; return; }
-        const html = ['<table style="width:100%; border-collapse:collapse;"><tr><th style="text-align:left">Card</th><th>Runs</th><th>Errors</th><th>Last run</th></tr>'];
-        for (const r of rows) {
-          const ts = r.lastRunAt ? new Date(r.lastRunAt).toLocaleTimeString() : '—';
-          html.push('<tr style="border-top:1px solid #eee"><td>' + r.id + '</td><td style="text-align:center">' + r.runs + '</td><td style="text-align:center; color:' + (r.errors ? '#c00' : '#999') + '">' + r.errors + '</td><td>' + ts + '</td></tr>');
+        root.innerHTML = '';
+        if (!rows.length) {
+          const p = document.createElement('p');
+          p.style.color = '#888';
+          p.textContent = 'No Flow runs yet.';
+          root.appendChild(p);
+          return;
         }
-        html.push('</table>');
-        root.innerHTML = html.join('');
-      }).catch(e => { document.getElementById('stats-table').innerHTML = '<span style="color:#c00">' + e.message + '</span>'; });
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const header = document.createElement('tr');
+        ['Card', 'Runs', 'Errors', 'Last run'].forEach((h, i) => {
+          const th = document.createElement('th');
+          th.style.textAlign = i === 0 ? 'left' : 'center';
+          th.textContent = h;
+          header.appendChild(th);
+        });
+        table.appendChild(header);
+        for (const r of rows) {
+          const tr = document.createElement('tr');
+          tr.style.borderTop = '1px solid #eee';
+          const tdId = document.createElement('td');
+          tdId.textContent = String(r.id);
+          const tdRuns = document.createElement('td');
+          tdRuns.style.textAlign = 'center';
+          tdRuns.textContent = String(r.runs);
+          const tdErr = document.createElement('td');
+          tdErr.style.textAlign = 'center';
+          tdErr.style.color = r.errors ? '#c00' : '#999';
+          tdErr.textContent = String(r.errors);
+          const tdTs = document.createElement('td');
+          tdTs.textContent = r.lastRunAt ? new Date(r.lastRunAt).toLocaleTimeString() : '—';
+          tr.appendChild(tdId); tr.appendChild(tdRuns); tr.appendChild(tdErr); tr.appendChild(tdTs);
+          table.appendChild(tr);
+        }
+        root.appendChild(table);
+      }).catch(e => {
+        const root = document.getElementById('stats-table');
+        root.innerHTML = '';
+        const span = document.createElement('span');
+        span.style.color = '#c00';
+        span.textContent = String(e && e.message ? e.message : e);
+        root.appendChild(span);
+      });
     }
 
     function runSpeedTest() {
@@ -503,15 +566,31 @@
       const Homey = window._homey;
       Homey.api('GET', '/activity').then(items => {
         const root = document.getElementById('activity-log');
+        root.innerHTML = '';
         if (!items.length) {
-          root.innerHTML = '<p style="color:#888">No activity yet.</p>';
+          const p = document.createElement('p');
+          p.style.color = '#888';
+          p.textContent = 'No activity yet.';
+          root.appendChild(p);
           return;
         }
-        root.innerHTML = items.map(it => {
+        for (const it of items) {
           const when = new Date(it.ts).toLocaleTimeString();
-          const what = it.type + (it.text ? ': ' + it.text : '') + (it.name ? ': ' + it.name : '') + (it.percent !== undefined ? ': ' + it.percent + '%' : '');
-          return '<div class="activity-row"><span class="when">' + when + '</span>' + (it.device || '') + ' — ' + what + '</div>';
-        }).join('');
+          const what = String(it.type || '')
+            + (it.text ? ': ' + it.text : '')
+            + (it.name ? ': ' + it.name : '')
+            + (it.percent !== undefined ? ': ' + it.percent + '%' : '');
+          const row = document.createElement('div');
+          row.className = 'activity-row';
+          const span = document.createElement('span');
+          span.className = 'when';
+          span.textContent = when;
+          row.appendChild(span);
+          // String concat is safe here because everything below goes through
+          // textContent — never innerHTML.
+          row.appendChild(document.createTextNode((it.device ? String(it.device) : '') + ' — ' + what));
+          root.appendChild(row);
+        }
       }).catch(() => {});
     }
   </script>
