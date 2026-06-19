@@ -12,9 +12,9 @@
     "nl": "iDotMatrix"
   },
   "description": {
-    "en": "Control iDotMatrix BLE pixel displays from Homey. Show text, clocks, countdowns, scoreboards, images and animated GIFs.",
-    "de": "Steuere iDotMatrix BLE-Pixel-Displays mit Homey. Texte, Uhren, Countdowns, Scoreboards, Bilder und animierte GIFs anzeigen.",
-    "nl": "Bedien iDotMatrix BLE pixeldisplays vanuit Homey. Toon tekst, klokken, countdowns, scoreborden, afbeeldingen en geanimeerde GIFs."
+    "en": "Your pixel displays, animated with Homey.",
+    "de": "Ihre Pixel-Displays, animiert mit Homey.",
+    "nl": "Uw pixeldisplays, geanimeerd met Homey."
   },
   "tags": {
     "en": [
@@ -1681,9 +1681,9 @@
           "nl": "Toon tekst N seconden"
         },
         "titleFormatted": {
-          "en": "Show [[text]] in [[color]] for [[seconds]]s then [[restore]]",
-          "de": "[[text]] in [[color]] für [[seconds]]s zeigen, dann [[restore]]",
-          "nl": "Toon [[text]] in [[color]] [[seconds]]s, dan [[restore]]"
+          "en": "Show [[text]] in [[color]] for [[seconds]] seconds then [[restore]]",
+          "de": "[[text]] in [[color]] für [[seconds]] Sekunden zeigen, dann [[restore]]",
+          "nl": "Toon [[text]] in [[color]] [[seconds]] seconden, dan [[restore]]"
         },
         "args": [
           {
@@ -2276,9 +2276,9 @@
           "nl": "Toon willekeurige sticker"
         },
         "titleFormatted": {
-          "en": "Show random sticker on [[device]]",
-          "de": "Zufälligen Sticker auf [[device]] zeigen",
-          "nl": "Toon willekeurige sticker op [[device]]"
+          "en": "Show random sticker",
+          "de": "Zufälligen Sticker zeigen",
+          "nl": "Toon willekeurige sticker"
         },
         "args": [
           {
@@ -3162,9 +3162,9 @@
           "nl": "Playlist starten (externe server)"
         },
         "titleFormatted": {
-          "en": "Cycle remote images every [[interval_seconds]]s (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
-          "de": "Externe Bilder alle [[interval_seconds]]s wechseln (Shuffle: [[shuffle]], Fit: [[fit]], BG: [[background]])",
-          "nl": "Externe afbeeldingen elke [[interval_seconds]]s wisselen (shuffle: [[shuffle]], fit: [[fit]], achtergrond: [[background]])"
+          "en": "Cycle remote images every [[interval_seconds]] seconds (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
+          "de": "Externe Bilder alle [[interval_seconds]] Sekunden wechseln (Shuffle: [[shuffle]], Fit: [[fit]], BG: [[background]])",
+          "nl": "Externe afbeeldingen elke [[interval_seconds]] seconden wisselen (shuffle: [[shuffle]], fit: [[fit]], achtergrond: [[background]])"
         },
         "args": [
           {
@@ -3257,9 +3257,9 @@
           "nl": "Playlist starten (lokale store)"
         },
         "titleFormatted": {
-          "en": "Cycle stored images every [[interval_seconds]]s (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
-          "de": "Gespeicherte Bilder alle [[interval_seconds]]s wechseln (Shuffle: [[shuffle]], Fit: [[fit]], BG: [[background]])",
-          "nl": "Opgeslagen afbeeldingen elke [[interval_seconds]]s wisselen (shuffle: [[shuffle]], fit: [[fit]], achtergrond: [[background]])"
+          "en": "Cycle stored images every [[interval_seconds]] seconds (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
+          "de": "Gespeicherte Bilder alle [[interval_seconds]] Sekunden wechseln (Shuffle: [[shuffle]], Fit: [[fit]], BG: [[background]])",
+          "nl": "Opgeslagen afbeeldingen elke [[interval_seconds]] seconden wisselen (shuffle: [[shuffle]], fit: [[fit]], achtergrond: [[background]])"
         },
         "args": [
           {

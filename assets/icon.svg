@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect x="20" y="20" width="216" height="216" rx="28" fill="#18181c"/>
+  <!-- Removed background rectangle for transparency -->
   <g fill="#ff3366">
     <!-- 16x16 heart pattern, cells ~12px with 2px gap, starting at x=32 y=32 -->
     <!-- Row indexes derived from the python heart_pattern -->
