@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": [
@@ -1035,9 +1035,9 @@
           "nl": "Flash"
         },
         "titleFormatted": {
-          "en": "Flash [[color]] [[times]]x ([[on_ms]]ms on, [[off_ms]]ms off)",
-          "de": "[[color]] [[times]]x blitzen ([[on_ms]]ms an, [[off_ms]]ms aus)",
-          "nl": "Flash [[color]] [[times]]x ([[on_ms]]ms aan, [[off_ms]]ms uit)"
+          "en": "Flash [[color]] [[times]] times ([[on_ms]] ms on, [[off_ms]] ms off)",
+          "de": "[[color]] [[times]] Mal blitzen ([[on_ms]] ms an, [[off_ms]] ms aus)",
+          "nl": "Flash [[color]] [[times]] keer ([[on_ms]] ms aan, [[off_ms]] ms uit)"
         },
         "args": [
           {
@@ -1924,9 +1924,9 @@
           "nl": "Stop sequentie"
         },
         "titleFormatted": {
-          "en": "Stop sequence on [[device]]",
-          "de": "Sequenz auf [[device]] stoppen",
-          "nl": "Stop sequentie op [[device]]"
+          "en": "Stop sequence",
+          "de": "Sequenz stoppen",
+          "nl": "Stop sequentie"
         },
         "args": [
           {
@@ -3494,9 +3494,9 @@
           "nl": "Countdown"
         },
         "titleFormatted": {
-          "en": "Countdown [[action]] [[minutes]]m [[seconds]]s",
-          "de": "Countdown [[action]] [[minutes]]m [[seconds]]s",
-          "nl": "Countdown [[action]] [[minutes]]m [[seconds]]s"
+          "en": "Countdown [[action]] [[minutes]] minutes [[seconds]] seconds",
+          "de": "Countdown [[action]] [[minutes]] Minuten [[seconds]] Sekunden",
+          "nl": "Countdown [[action]] [[minutes]] minuten [[seconds]] seconden"
         },
         "args": [
           {

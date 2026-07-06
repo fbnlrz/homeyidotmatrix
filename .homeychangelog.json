@@ -1,0 +1,7 @@
+{
+  "0.9.0": {
+    "en": "Refactored app metadata, documentation, and iconography to meet store guidelines, and corrected Flow card argument implementation and labeling.",
+    "de": "App-Metadaten, Dokumentation und Icons an die Store-Richtlinien angepasst sowie Argument-Implementierung und Beschriftung der Flow-Karten korrigiert.",
+    "nl": "App-metadata, documentatie en iconen aangepast aan de store-richtlijnen, en de argumentimplementatie en labels van Flow-kaarten gecorrigeerd."
+  }
+}

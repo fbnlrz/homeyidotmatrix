@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- Driver Icon: Representing a pixel display frame -->
-  <g fill="none" stroke="#ff3366" stroke-width="12">
-    <rect x="30" y="30" width="196" height="196" rx="10"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960">
+  <!-- iDotMatrix display panel: framed LED grid on a small stand.
+       Distinct from the app icon (pixel-heart outline). -->
+  <g fill="none" stroke="#ff3366" stroke-width="44">
+    <rect x="140" y="110" width="680" height="680" rx="64"/>
   </g>
   <g fill="#ff3366">
-    <!-- A 3x3 pixel grid in the center -->
-    <rect x="70" y="70" width="30" height="30" rx="4"/>
-    <rect x="113" y="70" width="30" height="30" rx="4"/>
-    <rect x="156" y="70" width="30" height="30" rx="4"/>
-
-    <rect x="70" y="113" width="30" height="30" rx="4"/>
-    <rect x="113" y="113" width="30" height="30" rx="4"/>
-    <rect x="156" y="113" width="30" height="30" rx="4"/>
-
-    <rect x="70" y="156" width="30" height="30" rx="4"/>
-    <rect x="113" y="156" width="30" height="30" rx="4"/>
-    <rect x="156" y="156" width="30" height="30" rx="4"/>
+    <!-- 3x3 LED grid -->
+    <rect x="230" y="210" width="120" height="120" rx="26"/>
+    <rect x="420" y="210" width="120" height="120" rx="26"/>
+    <rect x="610" y="210" width="120" height="120" rx="26"/>
+    <rect x="230" y="400" width="120" height="120" rx="26"/>
+    <rect x="420" y="400" width="120" height="120" rx="26"/>
+    <rect x="610" y="400" width="120" height="120" rx="26"/>
+    <rect x="230" y="590" width="120" height="120" rx="26"/>
+    <rect x="420" y="590" width="120" height="120" rx="26"/>
+    <rect x="610" y="590" width="120" height="120" rx="26"/>
+    <!-- stand feet -->
+    <rect x="230" y="826" width="150" height="56" rx="22"/>
+    <rect x="580" y="826" width="150" height="56" rx="22"/>
   </g>
 </svg>
