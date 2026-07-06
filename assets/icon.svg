@@ -1,77 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- Removed background rectangle for transparency -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960">
+  <!-- Pixel-heart outline: the outline ring of a 7x6 pixel-art heart,
+       drawn as rounded LED pixels on a transparent background. -->
   <g fill="#ff3366">
-    <!-- 16x16 heart pattern, cells ~12px with 2px gap, starting at x=32 y=32 -->
-    <!-- Row indexes derived from the python heart_pattern -->
-    <g>
-      <circle cx="62"  cy="56"  r="5"/>
-      <circle cx="74"  cy="56"  r="5"/>
-      <circle cx="110" cy="56"  r="5"/>
-      <circle cx="122" cy="56"  r="5"/>
-      <circle cx="158" cy="56"  r="5"/>
-      <circle cx="170" cy="56"  r="5"/>
-
-      <circle cx="50" cy="68"  r="5"/>
-      <circle cx="62" cy="68"  r="5"/>
-      <circle cx="74" cy="68"  r="5"/>
-      <circle cx="86" cy="68"  r="5"/>
-      <circle cx="98" cy="68"  r="5"/>
-      <circle cx="110" cy="68" r="5"/>
-      <circle cx="122" cy="68" r="5"/>
-      <circle cx="134" cy="68" r="5"/>
-      <circle cx="146" cy="68" r="5"/>
-      <circle cx="158" cy="68" r="5"/>
-      <circle cx="170" cy="68" r="5"/>
-      <circle cx="182" cy="68" r="5"/>
-
-      <circle cx="50" cy="80" r="5"/>
-      <circle cx="62" cy="80" r="5"/>
-      <circle cx="74" cy="80" r="5"/>
-      <circle cx="86" cy="80" r="5"/>
-      <circle cx="98" cy="80" r="5"/>
-      <circle cx="110" cy="80" r="5"/>
-      <circle cx="122" cy="80" r="5"/>
-      <circle cx="134" cy="80" r="5"/>
-      <circle cx="146" cy="80" r="5"/>
-      <circle cx="158" cy="80" r="5"/>
-      <circle cx="170" cy="80" r="5"/>
-      <circle cx="182" cy="80" r="5"/>
-
-      <circle cx="62" cy="92" r="5"/>
-      <circle cx="74" cy="92" r="5"/>
-      <circle cx="86" cy="92" r="5"/>
-      <circle cx="98" cy="92" r="5"/>
-      <circle cx="110" cy="92" r="5"/>
-      <circle cx="122" cy="92" r="5"/>
-      <circle cx="134" cy="92" r="5"/>
-      <circle cx="146" cy="92" r="5"/>
-      <circle cx="158" cy="92" r="5"/>
-      <circle cx="170" cy="92" r="5"/>
-
-      <circle cx="74" cy="104" r="5"/>
-      <circle cx="86" cy="104" r="5"/>
-      <circle cx="98" cy="104" r="5"/>
-      <circle cx="110" cy="104" r="5"/>
-      <circle cx="122" cy="104" r="5"/>
-      <circle cx="134" cy="104" r="5"/>
-      <circle cx="146" cy="104" r="5"/>
-      <circle cx="158" cy="104" r="5"/>
-
-      <circle cx="86" cy="116" r="5"/>
-      <circle cx="98" cy="116" r="5"/>
-      <circle cx="110" cy="116" r="5"/>
-      <circle cx="122" cy="116" r="5"/>
-      <circle cx="134" cy="116" r="5"/>
-      <circle cx="146" cy="116" r="5"/>
-
-      <circle cx="98" cy="128" r="5"/>
-      <circle cx="110" cy="128" r="5"/>
-      <circle cx="122" cy="128" r="5"/>
-      <circle cx="134" cy="128" r="5"/>
-
-      <circle cx="110" cy="140" r="5"/>
-      <circle cx="122" cy="140" r="5"/>
-    </g>
+    <!-- row 0: top humps -->
+    <rect x="188" y="128" width="104" height="104" rx="26"/>
+    <rect x="308" y="128" width="104" height="104" rx="26"/>
+    <rect x="548" y="128" width="104" height="104" rx="26"/>
+    <rect x="668" y="128" width="104" height="104" rx="26"/>
+    <!-- row 1: sides + centre notch -->
+    <rect x="68"  y="248" width="104" height="104" rx="26"/>
+    <rect x="428" y="248" width="104" height="104" rx="26"/>
+    <rect x="788" y="248" width="104" height="104" rx="26"/>
+    <!-- row 2: sides -->
+    <rect x="68"  y="368" width="104" height="104" rx="26"/>
+    <rect x="788" y="368" width="104" height="104" rx="26"/>
+    <!-- row 3: taper -->
+    <rect x="188" y="488" width="104" height="104" rx="26"/>
+    <rect x="668" y="488" width="104" height="104" rx="26"/>
+    <!-- row 4: taper -->
+    <rect x="308" y="608" width="104" height="104" rx="26"/>
+    <rect x="548" y="608" width="104" height="104" rx="26"/>
+    <!-- row 5: tip -->
+    <rect x="428" y="728" width="104" height="104" rx="26"/>
   </g>
 </svg>
