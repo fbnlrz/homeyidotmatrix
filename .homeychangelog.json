@@ -1,4 +1,9 @@
 {
+  "0.9.1": {
+    "en": "Cleaner Flow card titles, consistent translations, and improved pairing.",
+    "de": "Übersichtlichere Flow-Karten-Titel, einheitliche Übersetzungen und verbessertes Koppeln.",
+    "nl": "Overzichtelijkere Flow-kaarttitels, consistente vertalingen en verbeterd koppelen."
+  },
   "0.9.0": {
     "en": "Refactored app metadata, documentation, and iconography to meet store guidelines, and corrected Flow card argument implementation and labeling.",
     "de": "App-Metadaten, Dokumentation und Icons an die Store-Richtlinien angepasst sowie Argument-Implementierung und Beschriftung der Flow-Karten korrigiert.",

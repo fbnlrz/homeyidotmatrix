@@ -11,7 +11,16 @@ class IDMDriver extends Homey.Driver {
     this.log('iDotMatrix driver initialized');
   }
 
-  async onPairListDevices() {
+  /**
+   * Register the pairing session handlers. The `list_devices` view (declared
+   * in the driver's `pair` templates in app.json) invokes the `list_devices`
+   * handler to populate the list of devices available for pairing.
+   */
+  async onPair(session) {
+    session.setHandler('list_devices', async () => this.discoverDevices());
+  }
+
+  async discoverDevices() {
     this.log('Scanning for iDotMatrix BLE devices...');
     let advertisements = [];
     try {

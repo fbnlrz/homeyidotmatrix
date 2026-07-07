@@ -1,6 +1,6 @@
 {
   "id": "com.idotmatrix",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "compatibility": ">=10.0.0",
   "sdk": 3,
   "platforms": [
@@ -1207,9 +1207,9 @@
       {
         "id": "show_weather",
         "title": {
-          "en": "Show weather (open-meteo)",
-          "de": "Wetter anzeigen (open-meteo)",
-          "nl": "Toon weer (open-meteo)"
+          "en": "Show weather",
+          "de": "Wetter anzeigen",
+          "nl": "Toon weer"
         },
         "titleFormatted": {
           "en": "Show weather at [[latitude]],[[longitude]] in [[units]] color [[color]] mirror [[mirror]]",
@@ -1489,9 +1489,9 @@
       {
         "id": "show_meter",
         "title": {
-          "en": "Show meter (value / max)",
-          "de": "Meter zeigen (Wert / Max)",
-          "nl": "Toon meter (waarde / max)"
+          "en": "Show meter",
+          "de": "Meter zeigen",
+          "nl": "Toon meter"
         },
         "titleFormatted": {
           "en": "Show meter [[value]] / [[max]] in [[color]] (bg [[background]])",
@@ -1620,9 +1620,7 @@
         "title": {
           "en": "Show QR code",
           "de": "QR-Code zeigen",
-          "nl": "QR-code tonen",
-          "fr": "Afficher un QR code",
-          "es": "Mostrar código QR"
+          "nl": "QR-code tonen"
         },
         "titleFormatted": {
           "en": "Show QR code for [[text]] in [[color]] on [[background]]",
@@ -1631,7 +1629,8 @@
         },
         "hint": {
           "en": "Render the given text as a QR code at the display's native resolution. Practical for short URLs, Wi-Fi credentials (WIFI:S:<ssid>;T:WPA;P:<pw>;;) or contact strings. Longer payloads need a 64×64 display.",
-          "de": "Erzeugt einen QR-Code aus dem Text in der Displayauflösung. Praktisch für kurze URLs, WLAN-Zugang (WIFI:S:<ssid>;T:WPA;P:<pw>;;) oder Kontakt-Strings. Längere Inhalte brauchen ein 64×64-Display."
+          "de": "Erzeugt einen QR-Code aus dem Text in der Displayauflösung. Praktisch für kurze URLs, WLAN-Zugang (WIFI:S:<ssid>;T:WPA;P:<pw>;;) oder Kontakt-Strings. Längere Inhalte brauchen ein 64×64-Display.",
+          "nl": "Genereert de opgegeven tekst als QR-code op de eigen resolutie van het display. Handig voor korte URL's, wifi-gegevens (WIFI:S:<ssid>;T:WPA;P:<pw>;;) of contactgegevens. Langere inhoud vereist een 64×64-display."
         },
         "args": [
           {
@@ -1805,7 +1804,8 @@
         },
         "hint": {
           "en": "Fires the same scrolling text on every paired iDotMatrix display in parallel. A disconnected display fails silently — the others still run.",
-          "de": "Schickt den gleichen Lauftext parallel an alle gekoppelten Displays. Ein nicht verbundenes Display schlägt still fehl — die anderen laufen weiter."
+          "de": "Schickt den gleichen Lauftext parallel an alle gekoppelten Displays. Ein nicht verbundenes Display schlägt still fehl — die anderen laufen weiter.",
+          "nl": "Stuurt dezelfde lopende tekst parallel naar elk gekoppeld iDotMatrix-display. Een niet-verbonden display faalt stil — de andere blijven werken."
         },
         "args": [
           { "name": "text", "type": "text", "title": { "en": "Text", "de": "Text", "nl": "Tekst" } },
@@ -1939,8 +1939,8 @@
       {
         "id": "show_multiline_text",
         "title": {
-          "en": "Show multi-line text (static)",
-          "de": "Mehrzeiliger Text (statisch)",
+          "en": "Show multi-line text",
+          "de": "Mehrzeiligen Text zeigen",
           "nl": "Toon meerregelige tekst"
         },
         "titleFormatted": {
@@ -2291,9 +2291,9 @@
       {
         "id": "start_music_sync",
         "title": {
-          "en": "Start music-sync (uses built-in mic)",
-          "de": "Music-Sync starten (nutzt eingebautes Mikrofon)",
-          "nl": "Music-sync starten (gebruikt ingebouwde microfoon)"
+          "en": "Start music-sync",
+          "de": "Music-Sync starten",
+          "nl": "Music-sync starten"
         },
         "titleFormatted": {
           "en": "Start music-sync visualization (type [[type]])",
@@ -2349,9 +2349,9 @@
       {
         "id": "reset_device",
         "title": {
-          "en": "Reset display (factory)",
-          "de": "Display zurücksetzen (Werkseinstellung)",
-          "nl": "Display resetten (fabrieksinstelling)"
+          "en": "Reset display to factory defaults",
+          "de": "Display auf Werkseinstellungen zurücksetzen",
+          "nl": "Display naar fabrieksinstellingen resetten"
         },
         "titleFormatted": {
           "en": "Reset display to factory defaults",
@@ -3157,9 +3157,9 @@
       {
         "id": "playlist_start_remote",
         "title": {
-          "en": "Start playlist (remote server)",
-          "de": "Playlist starten (externer Server)",
-          "nl": "Playlist starten (externe server)"
+          "en": "Start playlist from remote server",
+          "de": "Playlist von externem Server starten",
+          "nl": "Playlist van externe server starten"
         },
         "titleFormatted": {
           "en": "Cycle remote images every [[interval_seconds]] seconds (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
@@ -3252,9 +3252,9 @@
       {
         "id": "playlist_start_store",
         "title": {
-          "en": "Start playlist (local store)",
-          "de": "Playlist starten (lokaler Store)",
-          "nl": "Playlist starten (lokale store)"
+          "en": "Start playlist from local store",
+          "de": "Playlist aus lokalem Speicher starten",
+          "nl": "Playlist uit lokale opslag starten"
         },
         "titleFormatted": {
           "en": "Cycle stored images every [[interval_seconds]] seconds (shuffle: [[shuffle]], fit: [[fit]], bg: [[background]])",
