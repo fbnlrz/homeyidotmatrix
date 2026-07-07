@@ -1,6 +1,6 @@
 {
   "name": "com.idotmatrix",
-  "version": "0.9.1",
+  "version": "1.0.2",
   "description": "Homey integration for iDotMatrix BLE pixel displays",
   "main": "app.js",
   "license": "Unlicense",
