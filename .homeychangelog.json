@@ -1,4 +1,9 @@
 {
+  "1.0.2": {
+    "en": "Fixed the app icon so it displays correctly in the App Store.",
+    "de": "App-Icon korrigiert, sodass es im App Store korrekt angezeigt wird.",
+    "nl": "App-icoon gecorrigeerd zodat het correct wordt weergegeven in de App Store."
+  },
   "0.9.1": {
     "en": "Cleaner Flow card titles, consistent translations, and improved pairing.",
     "de": "Übersichtlichere Flow-Karten-Titel, einheitliche Übersetzungen und verbessertes Koppeln.",

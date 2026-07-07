@@ -1,27 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960">
-  <!-- Pixel-heart outline: the outline ring of a 7x6 pixel-art heart,
-       drawn as rounded LED pixels on a transparent background. -->
+  <!-- Pixel-art heart: a clean, single-colour vector shape on a
+       transparent background. Homey renders it as a monochrome mask,
+       so a filled shape stays recognisable at small sizes. -->
   <g fill="#ff3366">
-    <!-- row 0: top humps -->
-    <rect x="188" y="128" width="104" height="104" rx="26"/>
-    <rect x="308" y="128" width="104" height="104" rx="26"/>
-    <rect x="548" y="128" width="104" height="104" rx="26"/>
-    <rect x="668" y="128" width="104" height="104" rx="26"/>
-    <!-- row 1: sides + centre notch -->
-    <rect x="68"  y="248" width="104" height="104" rx="26"/>
-    <rect x="428" y="248" width="104" height="104" rx="26"/>
-    <rect x="788" y="248" width="104" height="104" rx="26"/>
-    <!-- row 2: sides -->
-    <rect x="68"  y="368" width="104" height="104" rx="26"/>
-    <rect x="788" y="368" width="104" height="104" rx="26"/>
-    <!-- row 3: taper -->
-    <rect x="188" y="488" width="104" height="104" rx="26"/>
-    <rect x="668" y="488" width="104" height="104" rx="26"/>
-    <!-- row 4: taper -->
-    <rect x="308" y="608" width="104" height="104" rx="26"/>
-    <rect x="548" y="608" width="104" height="104" rx="26"/>
-    <!-- row 5: tip -->
-    <rect x="428" y="728" width="104" height="104" rx="26"/>
+    <rect x="195" y="116" width="98" height="98" rx="22"/>
+    <rect x="313" y="116" width="98" height="98" rx="22"/>
+    <rect x="549" y="116" width="98" height="98" rx="22"/>
+    <rect x="667" y="116" width="98" height="98" rx="22"/>
+    <rect x="77" y="234" width="98" height="98" rx="22"/>
+    <rect x="195" y="234" width="98" height="98" rx="22"/>
+    <rect x="313" y="234" width="98" height="98" rx="22"/>
+    <rect x="431" y="234" width="98" height="98" rx="22"/>
+    <rect x="549" y="234" width="98" height="98" rx="22"/>
+    <rect x="667" y="234" width="98" height="98" rx="22"/>
+    <rect x="785" y="234" width="98" height="98" rx="22"/>
+    <rect x="77" y="352" width="98" height="98" rx="22"/>
+    <rect x="195" y="352" width="98" height="98" rx="22"/>
+    <rect x="313" y="352" width="98" height="98" rx="22"/>
+    <rect x="431" y="352" width="98" height="98" rx="22"/>
+    <rect x="549" y="352" width="98" height="98" rx="22"/>
+    <rect x="667" y="352" width="98" height="98" rx="22"/>
+    <rect x="785" y="352" width="98" height="98" rx="22"/>
+    <rect x="195" y="470" width="98" height="98" rx="22"/>
+    <rect x="313" y="470" width="98" height="98" rx="22"/>
+    <rect x="431" y="470" width="98" height="98" rx="22"/>
+    <rect x="549" y="470" width="98" height="98" rx="22"/>
+    <rect x="667" y="470" width="98" height="98" rx="22"/>
+    <rect x="313" y="588" width="98" height="98" rx="22"/>
+    <rect x="431" y="588" width="98" height="98" rx="22"/>
+    <rect x="549" y="588" width="98" height="98" rx="22"/>
+    <rect x="431" y="706" width="98" height="98" rx="22"/>
   </g>
 </svg>
