@@ -51,16 +51,15 @@ OTA stack.
 
 ### Confirmed parameters
 
-- **Algorithm**: `AES/CBC/PKCS7Padding`
-- **Key (ASCII)**: `Jy47rzJAgKMfrcc92PamyyukQqB7wmFu`
-- **Key (Hex, 32 bytes → AES-256)**:
-  `4a793437727a4a41674b4d66726363393250616d7979756b51714237776d4675`
-- **IV (ASCII, claimed)**: `0000000000000000` (16 × 0x30, not 16 × 0x00)
-- **Key location**: `com.heaton.baselib.utils.AESUtils.createCustomKey()`
-  ```java
-  return new SecretKeySpec(
-    "Jy47rzJAgKMfrcc92PamyyukQqB7wmFu".getBytes(), ALGORITHM);
-  ```
+- **Algorithm**: `AES/CBC/PKCS7Padding` (AES-256; the key is a 32-byte
+  ASCII string, giving a 256-bit key).
+- **Key**: a hard-coded ASCII string literal. The raw value is intentionally
+  **not reproduced here** — it is third-party material embedded in the vendor
+  binary. Anyone continuing this research can read it directly from the
+  vendor app; see "Key location" below.
+- **IV**: 16 ASCII `'0'` characters (i.e. bytes `0x30`, **not** `0x00`).
+- **Key location**: `com.heaton.baselib.utils.AESUtils.createCustomKey()`,
+  which wraps the literal in a `SecretKeySpec` with the algorithm above.
 
 ### What is unsolved
 
