@@ -116,3 +116,7 @@ This app was developed using [Claude Code](https://claude.com/claude-code) and t
 ## Status
 
 Early test release. The display reacts correctly to all opcodes verified via the probe tool, but the broader Flow API has not yet been hardened against every firmware variation. Issues and PRs welcome on [GitHub](https://github.com/fbnlrz/homeyidotmatrix/issues).
+
+---
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20me-FF00FF?logo=kofi&logoColor=white)](https://ko-fi.com/fbnlrz) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-Japan%202027-00FFFF?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/fbnlrz)
